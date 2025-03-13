@@ -11,7 +11,7 @@ TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐�
 只测试过在Docker环境下能正常使用，理论Windows和Linux同样支持，推荐使用docker。
 ## 基本使用方法
 您需要部署TS3AudioBot，网易云API，QQ音乐API。
-1. 安装插件，将[**TS3AudioBot-Plugin-Netease-QQ.dll**]()文件以及配置文件netease_qq_config.ini复制到TS3AudioBot的/plugins文件夹下，如果没有请自行创建插件文件夹，文件的目录应该如下：
+1. 安装插件，将[**TS3AudioBot-Plugin-Netease-QQ.dll**](https://github.com/RayQuantum/TS3AudioBot-Plugin-Netease-QQ/releases/download/v1.0.0/TS3AudioBot-Plugin-Netease-QQ.dll)文件以及配置文件netease_qq_config.ini复制到TS3AudioBot的/plugins文件夹下，如果没有请自行创建插件文件夹，文件的目录应该如下：
 ```
 - Bots
   - default
@@ -113,7 +113,7 @@ chown -R 9999:9999 /home/ray/ts3bot/data
 docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/data -it ancieque/ts3audiobot:0.12.0
 ```
 3. 给自己添加TS3AudioBot的管理员权限，先打开teamspeak，点击工具->身份，查看自己的UID，修改/data下的rights.toml文件，把自己的UID填入useruid中，若需要更多管理员则加逗号继续添加。
-```
+```toml
 # Admin rule
 [[rule]]
     # Set your admin Group Ids here, ex: [ 13, 42 ]
@@ -125,7 +125,7 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
     "+" = "*"
 ```
 4. 给所有用户添加使用指令的权限，依然是rights.toml，删掉原本的groupid和useruid，即可给全部用户权限，保存。
-```
+```toml
 # Playing rights
 [[rule]]
     # Set Group Ids you want to allow here, ex: [ 13, 42 ]
@@ -153,8 +153,7 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
         "cmd.qq.play",
         "cmd.qq.add",
         "cmd.qq.gd",
-        "cmd.qq.load"
-    ]
+        "cmd.qq.load",
 ```
 5. 创建默认bot，这里是创建机器人的**关键步骤**，由于docker部署原因，不会自动创建bot，所以在bots文件夹里创建default文件夹，在default文件夹内创建bot.toml，填入自己的服务器，以及密码，频道密码，以及修改机器人名字。该部分教程来自于[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)项目的[issues1](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker/issues/1)，在这部分没有经过测试。以下的中文是需要修改的地方。%% ps:<teamspeak 3 identity>部分我不清楚如何修改，可能可以通过teamspeak手动创建一个用户作为identity传入，或者从其他部署方式得到的bot.toml继承下来。 %%
 ```toml
@@ -215,6 +214,8 @@ docker run --name ts3audiobot -d --mount type=bind,source="$(pwd)/data",target=/
 ```
 9. 创建成功后，在teamspeak服务器应该已经连接了你的机器人了，随后和机器人私信，发送指令`!api token`，机器人会给你发送你的token。请注意，这里给你发送的过程可能会出现特殊的符号，导致被识别成表情，请手动替换一下，具体替换方法在聊天框把这个表情打出来，就知道这个表情代表的是什么字符。
 10. 获取了token后，我们就可以登录ts3后台了，管理后台是http://127.0.0.1:58913，输入自己的uid和token，即可登录后台。
+11. 启用插件，在TS3服务器中和机器人私聊，输入`!plugin list`，你会看到输出`#0|RDY|Netease_QQ_plugin (BotPlugin)`，随后输入`!plugin load 0`（具体序号看自己的输出），结果为`#0|+ON|Netease_QQ_plugin (BotPlugin)`则成功启用了插件。
+12. 添加频道描述
 到此TS3音乐机器人安装完成。
 ### 部署网易云API
 原文链接：https://binaryify.github.io/NeteaseCloudMusicApi
