@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>TS3AudioBot_Plugin_Netease_QQ</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="lib\TS3AudioBot.dll" />
+    <None Remove="lib\TSLib.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="lib\TS3AudioBot.dll" />
+    <EmbeddedResource Include="lib\TSLib.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Costura.Fody" Version="5.7.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>all</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="INIFileParser">
+      <HintPath>lib\INIFileParser.dll</HintPath>
+    </Reference>
+    <Reference Include="TS3AudioBot">
+      <HintPath>lib\TS3AudioBot.dll</HintPath>
+    </Reference>
+    <Reference Include="TSLib">
+      <HintPath>lib\TSLib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+    <PropertyGroup>
+		<PublishSingleFile>true</PublishSingleFile>
+	</PropertyGroup>
+</Project>
