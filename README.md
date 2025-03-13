@@ -234,3 +234,5 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 docker run -d -p 3300:3300 --name qqmusic_api binaryify/qqmusic
 ```
 3. 尝试连接，登录网站http://127.0.0.1:3300，看到有QQ音乐api的提示即安装完成
+## 写在最后
+原本这个插件在24年6月就写完了，直到今天我才翻出来重新完善，由此插件还有很多bug，希望大家遇到问题可以提出。
