@@ -113,7 +113,7 @@ chown -R 9999:9999 /home/ray/ts3bot/data
 docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/data -it ancieque/ts3audiobot:0.12.0
 ```
 3. 给自己添加TS3AudioBot的管理员权限，先打开teamspeak，点击工具->身份，查看自己的UID，修改/data下的rights.toml文件，把自己的UID填入useruid中，若需要更多管理员则加逗号继续添加。
-```toml
+```
 # Admin rule
 [[rule]]
     # Set your admin Group Ids here, ex: [ 13, 42 ]
@@ -125,7 +125,7 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
     "+" = "*"
 ```
 4. 给所有用户添加使用指令的权限，依然是rights.toml，删掉原本的groupid和useruid，即可给全部用户权限，保存。
-```toml
+```
 # Playing rights
 [[rule]]
     # Set Group Ids you want to allow here, ex: [ 13, 42 ]
