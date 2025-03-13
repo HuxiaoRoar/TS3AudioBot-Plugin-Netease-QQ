@@ -100,7 +100,7 @@ QQ歌单：https://y.qq.com/n/ryqq/playlist/[B]3805603854[/B]
 使用三个docker实现部署机器人
 - [TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)
 - [网易云API Docker安装](https://binaryify.github.io/NeteaseCloudMusicApi/#/?id=docker-%e5%ae%b9%e5%99%a8%e8%bf%90%e8%a1%8c)
-- 
+- [QQmusicAPI_dockerImage](https://github.com/RayQuantum/QQmusicAPI_docker_Image)
 ### 1. 使用docker部署TS3AudioBot
 原始项目来源[TS3AudioBot](https://github.com/Splamy/TS3AudioBot)，推荐使用docker版部署[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)，这里把安装教程翻译了一下。推荐先拉取镜像`ancieque/ts3audiobot:0.12.0`。
 1. 创建默认文件夹，先找到一个放项目的文件夹这里假设是`/home/ray/ts3bot/data`，创建后将其分配给9999用户，因为docker中的用户是9999，不修改的话会导致读取不了文件。
