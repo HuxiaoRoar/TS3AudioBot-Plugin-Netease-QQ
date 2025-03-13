@@ -516,7 +516,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         }
 
         [Command("bgm clear")]
-        public async Task CommandClearList(int argments, PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client, Player player)
+        public async Task CommandClearList(PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client, Player player)
         {
             PlayList.Clear();
             play_index = 0;
