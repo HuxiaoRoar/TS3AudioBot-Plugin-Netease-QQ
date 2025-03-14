@@ -9,6 +9,11 @@
 TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐和网易云音乐。
 需要自行部署1. TS3AudioBot  2.网易云API 3.QQ音乐API （API也可只部署其中一个）
 只测试过在Docker环境下能正常使用，理论Windows和Linux同样支持，推荐使用docker。
+## 功能介绍
+- 指令点歌，使用`!bgm play xxx`指令播放，使用`!qq play xxx`可以播放QQ音乐里的歌曲，同时支持输入ID和歌名查询（建议输入ID）。
+- 支持播放模式切换，使用`!bgm mode xxx`来切换，支持[0=顺序播放 1=单曲循环 2=顺序循环 3=随机循环]。
+- 支持网易云FM模式，使用`!wyy fm`进入fm播放模式，进入后使用`bgm next`进入下一首歌
+- 内置歌曲列表，使用`!bgm ls`查看当前的播放歌曲列表，使用`!bgm go xxx`跳转歌曲，使用`!bgm rm xxx`来删除歌曲，使用`!bgm clear`来清除列表。
 ## 基本使用方法
 您需要部署TS3AudioBot，网易云API，QQ音乐API。
 1. 安装插件，将[**TS3AudioBot-Plugin-Netease-QQ.dll**](https://github.com/RayQuantum/TS3AudioBot-Plugin-Netease-QQ/releases/download/v1.0.0/TS3AudioBot-Plugin-Netease-QQ.dll)文件以及配置文件netease_qq_config.ini复制到TS3AudioBot的/plugins文件夹下，如果没有请自行创建插件文件夹，文件的目录应该如下：
@@ -140,7 +145,7 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
         "cmd.bgm.ls",
         "cmd.bgm.go",
         "cmd.bgm.rm",
-        "cmd.bgm.ls p",
+        "cmd.bgm.ls.p",
         "cmd.bgm.clear",
         # wyy
         "cmd.wyy.login",
@@ -154,8 +159,14 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
         "cmd.qq.add",
         "cmd.qq.gd",
         "cmd.qq.load",
+        # Play controls
+        "cmd.pause",
+		"cmd.stop",
+		"cmd.seek",
+		"cmd.volume"
+	]
 ```
-5. 创建默认bot，这里是创建机器人的**关键步骤**，由于docker部署原因，不会自动创建bot，所以在bots文件夹里创建default文件夹，在default文件夹内创建bot.toml，填入自己的服务器，以及密码，频道密码，以及修改机器人名字。该部分教程来自于[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)项目的[issues1](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker/issues/1)，在这部分没有经过测试。以下的中文是需要修改的地方。%% ps:<teamspeak 3 identity>部分我不清楚如何修改，可能可以通过teamspeak手动创建一个用户作为identity传入，或者从其他部署方式得到的bot.toml继承下来。 %%
+5. 创建默认bot，这里是创建机器人的**关键步骤**，由于docker部署原因，不会自动创建bot，所以在bots文件夹里创建default文件夹，在default文件夹内创建bot.toml，填入自己的服务器，以及密码，频道密码，以及修改机器人名字。该部分教程来自于[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)项目的[issues1](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker/issues/1)，在这部分没有经过测试。以下的中文是需要修改的地方。%% ps:<teamspeak 3 identity>部分我不清楚如何修改，可能可以通过Windows版本的ts3audiobot手动创建一个机器人，然后把其中的identity复制过来，或者直接从其他部署方式得到的bot.toml继承下来。 %%
 ```toml
 #Starts the instance when the TS3AudioBot is launched.
 run = true
