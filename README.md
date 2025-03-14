@@ -231,7 +231,7 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 1. 下载后，执行`docker load qqmusic_image.tar`
 2. 部署容器
 ```
-docker run -d -p 3300:3300 --name qqmusic_api binaryify/qqmusic
+docker run -d -p 3300:3300 --name qqmusic_api qqmusic
 ```
 3. 尝试连接，登录网站http://127.0.0.1:3300，看到有QQ音乐api的提示即安装完成
 ## 写在最后
