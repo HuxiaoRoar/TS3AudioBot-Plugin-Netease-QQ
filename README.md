@@ -166,7 +166,7 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
 		"cmd.volume"
 	]
 ```
-5. 创建默认bot，这里是创建机器人的**关键步骤**，由于docker部署原因，不会自动创建bot，所以在bots文件夹里创建default文件夹，在default文件夹内创建bot.toml，填入自己的服务器，以及密码，频道密码，以及修改机器人名字。该部分教程来自于[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)项目的[issues1](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker/issues/1)，在这部分没有经过测试。以下的中文是需要修改的地方。%% ps:<teamspeak 3 identity>部分我不清楚如何修改，可能可以通过Windows版本的ts3audiobot手动创建一个机器人，然后把其中的identity复制过来，或者直接从其他部署方式得到的bot.toml继承下来。 %%
+5. 创建默认bot，这里是创建机器人的**关键步骤**，由于docker部署原因，不会自动创建bot，所以在bots文件夹里创建default文件夹，在default文件夹内创建bot.toml，填入自己的服务器，以及密码，频道密码，以及修改机器人名字。该部分教程来自于[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)项目的[issues1](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker/issues/1)，在这部分没有经过测试。以下的中文是需要修改的地方。ps:<teamspeak 3 identity>部分我不清楚如何修改，可能可以通过Windows版本的ts3audiobot手动创建一个机器人，然后把其中的identity复制过来，似乎offset也需要修改，或者直接从其他部署方式得到的bot.toml继承下来。
 ```toml
 #Starts the instance when the TS3AudioBot is launched.
 run = true
