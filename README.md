@@ -14,6 +14,7 @@ TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐�
 - 支持播放模式切换，使用`!bgm mode xxx`来切换，支持[0=顺序播放 1=单曲循环 2=顺序循环 3=随机循环]。
 - 支持网易云FM模式，使用`!wyy fm`进入fm播放模式，进入后使用`bgm next`进入下一首歌
 - 内置歌曲列表，使用`!bgm ls`查看当前的播放歌曲列表，使用`!bgm go xxx`跳转歌曲，使用`!bgm rm xxx`来删除歌曲，使用`!bgm clear`来清除列表。
+- 新增歌词功能，使用`!bgm lyric`开启，默认关闭。
 ## 基本使用方法
 您需要部署TS3AudioBot，网易云API，QQ音乐API。
 1. 安装插件，将[**TS3AudioBot-Plugin-Netease-QQ.dll**](https://github.com/RayQuantum/TS3AudioBot-Plugin-Netease-QQ/releases/download/v1.0.0/TS3AudioBot-Plugin-Netease-QQ.dll)文件以及配置文件netease_qq_config.ini复制到TS3AudioBot的/plugins文件夹下，如果没有请自行创建插件文件夹，文件的目录应该如下：
@@ -70,6 +71,8 @@ cookies = ""
 [COLOR=#0000ff]!bgm ls p [第N页][/COLOR]
 11.清空歌曲列表
 [COLOR=#0000ff]!bgm clear[/COLOR]
+12.启用歌词功能
+[COLOR=#0000ff]!bgm lyric[/COLOR]
 -------------------------------------------
 网易云：
 1.登录网易云账号(输入后通过机器人头像扫码登录)
@@ -84,8 +87,8 @@ cookies = ""
 [COLOR=#ff0000]!wyy fm[/COLOR]
 -------------------------------------------
 QQ音乐
-1.登录qq账号(输入cookie登录)
-[COLOR=#0eb050]!qq login [cookie][/COLOR]
+1.登录qq账号(使用QQ扫码登录)
+[COLOR=#0eb050]!qq login[/COLOR]
 2.立即播放QQ音乐(QQ音乐id是带字母的)
 [COLOR=#0eb050]!qq play [音乐id或者名称][/COLOR]
 3.添加音乐到下一首
@@ -196,7 +199,7 @@ channel = "<starting channel name>"
 
 [connect.identity]
 #||| DO NOT MAKE THIS KEY PUBLIC ||| The client identity. You can import a teamspeak3 identity here too.
-key = "<teamspeak 3 identity>"
+key = "<需要修改teamspeak 3 identity>"
 #The client identity offset determining the security level.
 offset = 28
 
@@ -237,12 +240,14 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 2. 尝试连接，登录网站http://127.0.0.1:3000，看到有网易云api的提示即安装完成
 ### 部署QQ音乐API
 原项目：https://github.com/jsososo/QQMusicApi
+分支项目：https://github.com/yunxiangjun/QQMusicApi/tree/master
+为了支持扫码登录和cookie保存，这里我自己修改了一下原项目的代码，重新打包了一个docker文件，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下。
 部署QQ音乐API由于没有官方的Docker镜像，所以这里我自己打包了一个上传在另外一个项目[QQmusicAPI_docker_Image](https://github.com/RayQuantum/QQmusicAPI_docker_Image)，文件较大，具体部署步骤可以查看该项目内。
 下载链接：https://github.com/RayQuantum/QQmusicAPI_docker_Image/releases/download/v1.0.0/qqmusic_image.tar
-1. 下载后，执行`docker load qqmusic_image.tar`
+1. 下载后，执行`docker load qqmusic_image_qr.tar`
 2. 部署容器
 ```
-docker run -d -p 3300:3300 --name qqmusic_api qqmusic
+docker run -d -p 3300:3300 --name qqmusic_api qqmusicapi_qr
 ```
 3. 尝试连接，登录网站http://127.0.0.1:3300，看到有QQ音乐api的提示即安装完成
 ## 写在最后

@@ -17,6 +17,8 @@ using Newtonsoft.Json.Linq;
 using System.Runtime.InteropServices.ComTypes;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Globalization;
+using System.Reflection.Metadata;
 
 namespace MusicAPI
 {
@@ -26,6 +28,8 @@ namespace MusicAPI
         public List<string> cookies = new List<string> { "", "" };
         public List<string> addresss = new List<string> { "", "" };
         public string netease_login_key;
+        public string ptqrtoken;
+        public string qrsig;
 
         //--------------------------参数设置--------------------------
         public void SetCookies(string cookies, int type_music)
@@ -82,6 +86,67 @@ namespace MusicAPI
             re.Add("code",code.ToString());
             re.Add("message", message);
             re.Add("cookie", cookie);
+            return re;
+        }
+        
+        public async Task<Stream> GetQQLoginImage()
+        {
+            // 获取登录二维码
+            string login_key_url = $"{addresss[1]}/user/getLoginQr/qq";
+            string Json_get = await HttpGetAsync(login_key_url);
+            if (Json_get == null)
+            {
+                return null;
+            }
+            dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
+            string image;
+            image = data.img;
+            ptqrtoken = data.ptqrtoken;
+            qrsig = data.qrsig;
+            
+            // string转stream
+            string[] img = image.Split(",");
+            byte[] bytes = Convert.FromBase64String(img[1]);
+            Stream stream = new MemoryStream(bytes);
+
+            return stream;
+        }
+        
+        public async Task<Dictionary<string,string>> CheckQQLoginStatus()
+        {
+            // 检查登录情况
+            string check_url = $"{addresss[1]}/user/checkLoginQr/qq";
+            string content = String.Format("{{\"ptqrtoken\" : \"{0}\",\"qrsig\": \"{1}\"}}", ptqrtoken, qrsig);
+            string res = await HttpPostAsync(check_url, content);
+            Dictionary<string, string> re = new Dictionary<string, string>();
+            if (res == null)return null;
+            dynamic data = JsonConvert.DeserializeObject<dynamic> (res);
+
+            bool isOK = data.isOk;
+            int result = data.result;
+            string message,uin, cookie;
+            re.Add("isOK", isOK.ToString());
+            if (isOK && result == 100)
+            {
+                message = data.message;
+                uin = data.uin;
+
+                var cookieBuilder = new StringBuilder();
+                foreach (var item in data.cookie.Properties())
+                {
+                    cookieBuilder.Append($"{item.Name}={item.Value}; ");
+                }
+                cookie = cookieBuilder.ToString().TrimEnd(' ', ';');
+                re.Add("message",message);
+                re.Add("uin", uin);
+                re.Add("cookie",cookie);
+            }
+            else
+            {
+                message = data.errMsg;
+                re.Add("message", message);
+            }
+
             return re;
         }
         public async Task<string> SetQQLoginCookies(string cookies)
@@ -186,6 +251,7 @@ namespace MusicAPI
                 {
                     return null;
                 }
+                // return Json_get;
                 JObject data = JObject.Parse(Json_get);
                 data = (JObject)data["data"];
                 string Songurl = "";
@@ -263,7 +329,7 @@ namespace MusicAPI
         public async Task<string> SearchSong(string Song_name, int type_music)
         {
             // 查找歌曲, 返回类型为id或者错误 0
-            if (type_music == 0) 
+            if (type_music == 0)
             {
                 // 网易云音乐
                 string url = $"{addresss[type_music]}/search?keywords={Song_name}?limit=1";
@@ -281,16 +347,104 @@ namespace MusicAPI
             {
                 // QQ音乐
                 string url = $"{addresss[type_music]}/search?key={Song_name}&pageSize=1";
-                var Json_get = await HttpGetWithCookiesAsync(url,type_music);
+                var Json_get = await HttpGetWithCookiesAsync(url, type_music);
                 if (Json_get == null)
                 {
                     return "0";
                 }
-                dynamic data = JsonConvert.DeserializeObject<dynamic> (Json_get);
+                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
                 string id_get = data.data.list[0].songmid;
                 return id_get;
             }
             return "0";
+        }
+        public async Task<List<Dictionary<TimeSpan, string>>> GetSongLyric(string Song_id, int type_music)
+        {
+            List<Dictionary<TimeSpan, string>>  lyric = new List<Dictionary<TimeSpan, string>>();
+            if (type_music == 0)
+            {
+                // 网易云音乐
+                string url = $"{addresss[type_music]}/lyric?id={Song_id}";
+                var Json_get = await HttpGetAsync(url);
+                if (Json_get == null)
+                {
+                    return null;
+                }
+                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
+                string lyric_all;
+                if (data.tlyric.lyric!="")
+                {// 若有翻译
+                    lyric_all = data.tlyric.lyric;
+                }
+                else
+                {
+                    lyric_all = data.lrc.lyric;
+                }
+                // 格式转化
+                string[] lines = lyric_all.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var line in lines)
+                {
+                    int closingBracketIndex = line.IndexOf(']');
+                    if (closingBracketIndex <= 0) continue;
+
+                    string timePart = line.Substring(1, closingBracketIndex - 1);
+                    string lyric_single = line.Substring(closingBracketIndex + 1).Trim();
+
+                    if (string.IsNullOrWhiteSpace(lyric_single)) continue;
+
+                    if (TimeSpan.TryParseExact(timePart, @"mm\:ss\.fff", CultureInfo.InvariantCulture, out TimeSpan timestamp))
+                    {
+                        var lyricEntry = new Dictionary<TimeSpan, string>();
+                        lyricEntry.Add(timestamp, lyric_single);
+                        lyric.Add(lyricEntry);
+                    }
+                }
+                return lyric;
+            }
+            else if (type_music == 1)
+            {
+                // QQ音乐
+                string url = $"{addresss[type_music]}/lyric?songmid={Song_id}";
+                var Json_get = await HttpGetAsync(url);
+                if (Json_get == null)
+                {
+                    return null;
+                }
+                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
+                // 检查接口返回状态码
+                if (data.result != 100)
+                {
+                    return null;
+                }
+                string lyric_all;
+                if (data.data.trans != "")
+                {// 若有翻译
+                    lyric_all = data.data.trans;
+                }
+                else
+                {
+                    lyric_all = data.data.lyric;
+                }
+                string[] lines = lyric_all.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string line in lines)
+                {
+                    Match match = Regex.Match(line, @"^\[(\d{2}:\d{2}\.\d{2})\](.*)$");
+                    if (match.Success)
+                    {
+                        string timeStr = match.Groups[1].Value;
+                        string lyric_single = match.Groups[2].Value.Trim();
+
+                        if (TimeSpan.TryParseExact(timeStr, @"mm\:ss\.ff", CultureInfo.InvariantCulture, out TimeSpan time))
+                        {
+                            Dictionary<TimeSpan, string> entry = new Dictionary<TimeSpan, string>();
+                            entry.Add(time, lyric_single);
+                            lyric.Add(entry);
+                        }
+                    }
+                }
+            }
+                return lyric;
         }
         //-------------------------获取歌单--------------------------
         public async Task<long> SearchPlayList(string PlayList_name, int type_music)
