@@ -150,6 +150,7 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
         "cmd.bgm.rm",
         "cmd.bgm.ls.p",
         "cmd.bgm.clear",
+        "cmd.bgm.lyric",
         # wyy
         "cmd.wyy.login",
         "cmd.wyy.play",
@@ -243,8 +244,8 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 分支项目：https://github.com/yunxiangjun/QQMusicApi/tree/master
 为了支持扫码登录和cookie保存，这里我自己修改了一下原项目的代码，重新打包了一个docker文件，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下。
 部署QQ音乐API由于没有官方的Docker镜像，所以这里我自己打包了一个上传在另外一个项目[QQmusicAPI_docker_Image](https://github.com/RayQuantum/QQmusicAPI_docker_Image)，文件较大，具体部署步骤可以查看该项目内。
-下载链接：https://github.com/RayQuantum/QQmusicAPI_docker_Image/releases/download/v1.0.0/qqmusic_image.tar
-1. 下载后，执行`docker load qqmusic_image_qr.tar`
+下载链接：https://github.com/RayQuantum/QQmusicAPI_docker_Image/releases/download/v1.1.0/qqmusic_qr_image.tar
+1. 下载后，执行`docker load qqmusic_qr_image.tar`
 2. 部署容器
 ```
 docker run -d -p 3300:3300 --name qqmusic_api qqmusicapi_qr
