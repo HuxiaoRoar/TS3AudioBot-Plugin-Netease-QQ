@@ -170,6 +170,7 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
         "cmd.wyy.fm",
         # qq
         "cmd.qq.login",
+        "cmd.qq.cookie",
         "cmd.qq.play",
         "cmd.qq.add",
         "cmd.qq.gd",
