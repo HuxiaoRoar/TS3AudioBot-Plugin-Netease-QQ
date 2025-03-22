@@ -23,6 +23,7 @@ using TSLib.Helper;
 using TS3AudioBot.Config;
 using System.Numerics;
 using static System.Net.Mime.MediaTypeNames;
+using System.Text.RegularExpressions;
 
 
 namespace TS3AudioBot_Plugin_Netease_QQ
@@ -34,8 +35,10 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         private InvokerData invokerData;
         private Player player;
         private Connection connection;
+
         // 机器人在连接中的名字
         private string botname_connect;
+        private string botname_connect_before;
         // config
         readonly private static string config_file_name = "netease_qq_config.ini";
         private static string iniPath;
@@ -48,13 +51,13 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         // QQ音乐api地址
         private static string qqmsuic_api_address;
         private static string qqmusic_cookies;
+       
         // API
         private static MusicAPI.MusicAPI musicapi;
         // 播放
         // 播放列表, 结构List<"id": <id>,"music_type" :<音乐API选择(0为网易云, 1为QQ音乐)>>
         private List<Dictionary<string, string>> PlayList = new List<Dictionary<string, string>>();
-        // 当前播放的歌词
-        private List<Dictionary<TimeSpan,string>> Lyric = new List<Dictionary<TimeSpan,string>>();
+        
         // 播放类型, 0:常规PlayList播放, 1:私人FM(仅限于网易云音乐)
         private int play_type = 0;
         // PlayList播放的播放模式, 0:顺序播放(到末尾自动暂停), 1:单曲循环, 2:顺序循环, 3:随机
@@ -63,10 +66,17 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         private int play_index = 0;
         // 是否阻塞
         private bool isObstruct = false;
+        // 当前播放的歌词
+        private List<Dictionary<TimeSpan, string>> Lyric = new List<Dictionary<TimeSpan, string>>();
         // 上一个歌词
-        string lyric_before;
+        private string lyric_before;
         // 是否展示歌词标志位
         private bool isLyric = false;
+        private bool isLyricThread = false;
+        private string lyric_id_now;
+        // 等待频道无人时间
+        private static int max_wait_alone = 30;
+        private int waiting_time = 0;
         //--------------------------获取audio bot数据--------------------------
         public Netease_QQ_plugin(PlayManager playManager,Ts3Client ts3Client, Player player, Connection connection,ConfBot confBot)
         {
@@ -132,10 +142,11 @@ namespace TS3AudioBot_Plugin_Netease_QQ
 
             // 添加audio bot 事件
             player.OnSongEnd += OnSongEnd;
+            ts3Client.OnAloneChanged += OnAlone;
         }
         //--------------------------歌单操作--------------------------
         public async Task PlayListPlayNow()
-        {
+        {// 播放歌单中的歌曲，带歌词线程，请在指令的最后调用
             Lyric.Clear();
             // 歌单 播放当前index 的歌
             if (PlayList.Count !=0 && play_index < PlayList.Count)
@@ -146,7 +157,61 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 PlayList[play_index].TryGetValue("id", out string_id);
                 PlayList[play_index].TryGetValue("music_type", out string_music_type);
                 int.TryParse(string_music_type, out music_type);
-                await PlayMusic(string_id, (int) music_type);
+                try
+                {
+                    await PlayMusic(string_id, (int)music_type);
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+                finally
+                {
+                    // 歌词线程
+                    if (isLyricThread == true)
+                    {
+                        isLyricThread = false;
+                        await Task.Delay(250);
+                    }
+                    isLyricThread = true;
+                    while (isLyricThread)
+                    {
+                        await Task.Delay(200);
+                        if (this.PlayList.Count == 0) { continue; }
+                        if (player.Paused) { continue; }
+                        if (!isLyric) { continue; }
+                        if (Lyric.Count == 0 || lyric_id_now != string_id)
+                        {// 获取歌词
+                            Lyric.Clear();
+                            lyric_before = "";
+                            lyric_id_now = string_id;
+                            await GetLyricNow();
+                        }
+                        // 开始刷新歌词
+                        string lyric_now = "";
+                        TimeSpan now = (TimeSpan)player.Position;
+                        for (int i = 0; i < Lyric.Count; i++)
+                        {
+                            if (now > Lyric[i].First().Key)
+                            {
+                                lyric_now = Lyric[i][Lyric[i].First().Key];
+                                long p_now, p_length;
+                                p_now = (long)((TimeSpan)player.Position).TotalSeconds;
+                                p_length = (long)((TimeSpan)player.Length).TotalSeconds;
+                                lyric_now += $" [{p_now}/{p_length}s]";
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                        if (lyric_now != lyric_before)
+                        {
+                            await ts3Client.ChangeDescription(lyric_now);
+                        }
+                        lyric_before = lyric_now;
+                    }
+                }
             }
         }
         public async Task PlayFMNow()
@@ -154,30 +219,58 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             // 直接播放FM
             PlayList.Clear();
             play_index = 0;
-            string fm_id = await musicapi.GetFMSongId();
-            await PlayListAdd(fm_id, 0);
+            string fm_id;
+            try
+            {
+                fm_id = await musicapi.GetFMSongId();
+                await PlayListAdd(fm_id, 0);
+            }
+            catch (InvalidOperationException e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+            }
+            catch (ArgumentException e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+            }
         }
-        public async Task<string> PlayListAdd(string song_id, int music_type)
-        {// 适用于用户的添加单独歌曲，会获取歌曲detail，gd指令是适用于添加批量歌曲
+        public async Task PlayListAdd(string song_id, int music_type)
+        {
+            // 适用于用户的添加单独歌曲，会获取歌曲detail，gd指令是适用于添加批量歌曲
             // 歌单添加歌 同时返回歌名
             string song_name = "", song_author = "";
-            Dictionary<string, string> detail = await musicapi.GetSongDetail(song_id, music_type);
-            detail.TryGetValue("name", out song_name);
-            detail.TryGetValue("author", out song_author);
-            // 添加歌单
-            PlayList.Add(new Dictionary<string, string> {
-             {"id", song_id },
-             { "music_type", music_type.ToString() },
-             { "name", song_name },
-             {"author", song_author }
-            });
-            if (PlayList.Count == 1)
+            Dictionary<string, string> detail;
+            try
             {
-                // 直接播放
-                play_index = 0;
-                await PlayListPlayNow();
+                detail = await musicapi.GetSongDetail(song_id, music_type);
+                detail.TryGetValue("name", out song_name);
+                detail.TryGetValue("author", out song_author);
+                // 添加歌单
+                PlayList.Add(new Dictionary<string, string> {
+                        {"id", song_id },
+                        { "music_type", music_type.ToString() },
+                        { "name", song_name },
+                        {"author", song_author }
+                 });
             }
-            return $"{song_name}-{song_author}";
+            catch (Exception e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+            }
+            try
+            {
+                if (PlayList.Count == 1)
+                {
+                    // 直接播放
+                    play_index = 0;
+                    await ts3Client.SendChannelMessage($"{song_name}-{song_author}已加入歌单");
+                    await PlayListPlayNow();
+                }
+            }
+            catch (Exception e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+            }
         }
         public async Task GetLyricNow()
         {
@@ -189,7 +282,14 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 PlayList[play_index].TryGetValue("id", out string_id);
                 PlayList[play_index].TryGetValue("music_type", out string_music_type);
                 int.TryParse(string_music_type, out music_type);
-                Lyric = await musicapi.GetSongLyric(string_id, music_type);
+                try
+                {
+                    Lyric = await musicapi.GetSongLyric(string_id, music_type);
+                }
+                catch (Exception e)
+                {
+                    await ts3Client.SendChannelMessage(e.Message);
+                }
             }
         }
         public async Task PlayListNext()
@@ -372,10 +472,29 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         public async Task PlayMusic(string Songid, int music_type)
         {
             // 播放歌曲id为Songid的音乐
-            string songurl = await musicapi.GetSongUrl(Songid, music_type);
-            // await ts3Client.SendChannelMessage("获得URL:");
-            // await ts3Client.SendChannelMessage(songurl);
-            Dictionary<string, string> detail = await musicapi.GetSongDetail(Songid, music_type);
+            Dictionary<string, string> detail = null;
+            try
+            {// 获取detail
+                detail = await musicapi.GetSongDetail(Songid, music_type);
+            }
+            catch (InvalidOperationException e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+                return;
+            }
+            catch (Exception e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+            }
+            string songurl = "";
+            try
+            {// 获取url
+                songurl = await musicapi.GetSongUrl(Songid, music_type);
+            }
+            catch (Exception e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+            }
             if (songurl == null || songurl == "")
             {
                 await ts3Client.SendChannelMessage("url获取错误 ");
@@ -383,14 +502,17 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             else
             {
                 // 加入音乐url
-                await MainCommands.CommandPlay(playManager, invokerData, songurl);
-                // 修改机器人描述
-                string error = "";
-                if (detail.TryGetValue("error", out error))
+                try
                 {
-                    await ts3Client.SendChannelMessage(error);
+                    await MainCommands.CommandPlay(playManager, invokerData, songurl);
                 }
-                else
+                catch (Exception)
+                {
+                    await ts3Client.SendChannelMessage($"URL无法播放-{songurl}");
+                    return;
+                }
+                // 修改机器人描述
+                if (detail != null)
                 {
                     string songname = "名称获取失败", authorname = "", picurl = "";
                     detail.TryGetValue("name", out songname);
@@ -408,23 +530,38 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                         }else if(play_mode == 3){
                             modename = "[随机]";
                         }
-                        // 通知
-                        await ts3Client.SendChannelMessage($"播放歌曲{songname} - {authorname}, 第{play_index}首 共{PlayList.Count}首");
                     }
                     else{
                         modename = "[FM]";
-                        // 通知
-                        
-                        await ts3Client.SendChannelMessage($"播放歌曲{songname} - {authorname}");
                     }
                     string newname = $"{botname_connect} {modename} {songname}-{authorname}";
-                    if (newname.Length > 20)
+                    if (newname.Length >= 21)
                     {
-                        newname = newname.Substring(0, 20);
+                        newname = newname.Substring(0, 21) +"...";
                     }
-                    await MainCommands.CommandBotName(ts3Client, newname);
-                    //  _ = MainCommands.CommandBotDescriptionSet(ts3Client, modename + songname + "-" + authorname);
-                    await MainCommands.CommandBotAvatarSet(ts3Client, picurl);
+                    if(newname != botname_connect_before)
+                    {// 相同则不换
+                        await MainCommands.CommandBotName(ts3Client, newname);
+                        botname_connect_before = newname;
+                    }
+                    if (play_type == 0)
+                    {
+                        // 通知
+                        await ts3Client.SendChannelMessage($"播放歌曲{songname} - {authorname}, 第{play_index}首 共{PlayList.Count}首");
+                    }
+                    else
+                    {
+                        // 通知
+                        await ts3Client.SendChannelMessage($"播放歌曲{songname} - {authorname}");
+                    }
+                    try
+                    {
+                        await MainCommands.CommandBotAvatarSet(ts3Client, picurl);
+                    }
+                    catch (Exception)
+                    {
+                        await ts3Client.SendChannelMessage($"机器人头像更换失败,url:{picurl}");
+                    }
                 }
             }
         }
@@ -466,8 +603,28 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             await CommandWyyAdd(argments, playManager, invokerData, ts3Client);
         }
 
+        /*
+        [Command("bgm seek")]
+        public async Task CommandSeek(string argments)
+        {
+            long value = 0;
+            if(long.TryParse(argments, out value))
+            {
+                if(!player.Paused)
+                {
+                    long p_now, p_length;
+                    p_now = (long)((TimeSpan)player.Position).TotalSeconds;
+                    p_length = (long)((TimeSpan)player.Length).TotalSeconds;
+                    if (value < p_length && value >= 0)
+                    {
+                        await player.Seek(TimeSpan.FromSeconds(value));
+                    }
+                }
+            }
+        }
+        */
         [Command("bgm next")]
-        public async Task CommandNext(PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client, Player player)
+        public async Task CommandNext(PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
             this.invokerData = invokerData;
@@ -475,7 +632,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         }
 
         [Command("bgm pre")]
-        public async Task CommandPre(PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client, Player player)
+        public async Task CommandPre(PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
             this.invokerData = invokerData;
@@ -483,7 +640,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         }
 
         [Command("bgm mode")]
-        public async Task CommandMode(int argments, PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client, Player player)
+        public async Task CommandMode(int argments, PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
             this.invokerData = invokerData;
@@ -591,6 +748,10 @@ namespace TS3AudioBot_Plugin_Netease_QQ
         {
             PlayList.Clear();
             play_index = 0;
+            if(!player.Paused)
+            {
+                MainCommands.CommandPause(player);
+            }
             await ts3Client.SendChannelMessage($"歌单清空");
         }
         //--------------------------歌词指令段--------------------------
@@ -602,44 +763,11 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             {
                 isLyric = false;
                 await ts3Client.SendChannelMessage("歌词已关闭");
-                return;
             }
             else
             {
                 isLyric = true;
                 await ts3Client.SendChannelMessage("歌词已开启");
-                while (isLyric)
-                {
-                    await Task.Delay(500);
-                    if (this.PlayList.Count == 0) { continue; }
-                    if (player.Paused) {  continue; }
-                    if (Lyric.Count == 0)
-                    {// 重新获取歌词
-                        Lyric.Clear();
-                        lyric_before = "";
-                        await GetLyricNow();
-                        // await ts3Client.SendChannelMessage($"重新获取歌词, 获取了{Lyric.Count}个条歌词");
-                    }
-                    // 刷新歌词
-                    string lyric_now = "";
-                    TimeSpan now =(TimeSpan)player.Position;
-                    for (int i = 0; i < Lyric.Count; i++)
-                    {
-                        if(now> Lyric[i].First().Key)
-                        {
-                            lyric_now = Lyric[i][Lyric[i].First().Key];
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    if(lyric_now!=lyric_before)
-                    {
-                        await ts3Client.ChangeDescription(lyric_now);
-                    }
-                    lyric_before = lyric_now;
-                }
             }
         }
         //--------------------------网易云指令段--------------------------
@@ -720,17 +848,15 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             {
                 await ts3Client.SendChannelMessage($"输入id\"{argments}\"");
                 // 输入为id
-                string res = await PlayListAdd(id.ToString(), 0);
-                await ts3Client.SendChannelMessage($"{res}已加入歌单");
+                await PlayListAdd(id.ToString(), 0);
             }
             else
             {
                 // 输入为歌名
                 songname = argments;
                 long.TryParse(await musicapi.SearchSong(songname, 0), out id);
-                await ts3Client.SendChannelMessage($"搜索歌{songname}-得到id\"{argments}\"");
-                string res = await PlayListAdd(id.ToString(), 0);
-                await ts3Client.SendChannelMessage($"{res}已加入歌单");
+                await ts3Client.SendChannelMessage($"搜索歌{songname}-得到id\"{id}\"");
+                await PlayListAdd(id.ToString(), 0);
             }
         }
         [Command("wyy gd")]
@@ -800,12 +926,20 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             // 扫码登录
             await ts3Client.SendChannelMessage("正在登录...");
             await MainCommands.CommandBotDescriptionSet(ts3Client, "扫码登录");
-
-            Stream img_stream = await musicapi.GetQQLoginImage();
+            Stream img_stream;
+            try
+            {
+                img_stream = await musicapi.GetQQLoginImage();
+            }
+            catch (Exception e)
+            {
+                await ts3Client.SendChannelMessage(e.Message);
+                return;
+            }
             if (img_stream == null) { await ts3Client.SendChannelMessage("null"); return; }
             await ts3Client.UploadAvatar(img_stream);
             // 开始等待扫码
-            int trytime = 10;
+            int trytime = 15;
             int i = 0;
             for (i = 0; i < trytime; i++) 
             {
@@ -832,6 +966,30 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             await ts3Client.SendChannelMessage("结束登录");
             isObstruct = false;
         }
+        [Command("qq cookie")]
+        public async Task CommandQQCookie(string argments)
+        {
+            if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
+            argments = argments.Trim(new char[] { '"' });
+            argments = string.IsNullOrEmpty(argments) ? "" : argments;
+
+            string res = await musicapi.SetQQLoginCookies(argments);
+            if (res == "true")
+            {
+                // 登录成功，保存cookie
+                qqmusic_cookies = argments;
+                string cookies = "\"" + argments + "\"";
+                musicapi.SetCookies(cookies, 1);
+                plugin_config["qq"]["cookies"] = cookies;
+                plugin_config_parser.WriteFile(iniPath, plugin_config);
+                await ts3Client.SendChannelMessage("QQ cookie 设置完成");
+            }
+            else
+            {
+                await ts3Client.SendChannelMessage(res);
+            }
+        }
+        
         [Command("qq load")]
         public async Task CommandQQLoad(PlayManager playManager, InvokerData invokerData, Ts3Client ts3Client)
         {
@@ -885,24 +1043,22 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             this.invokerData = invokerData;
             string id = "";
             string songname = "";
-
-            if (await musicapi.GetSongUrl(argments,1) != "")
+            // 判断是否为mid
+            Regex rgx = new Regex("^[a-zA-Z0-9]+$");
+            
+            if (rgx.IsMatch(argments))
             {
-
                 // 输入为mid
                 await ts3Client.SendChannelMessage($"输入id\"{argments}\"");
-                string res = await PlayListAdd(argments, 1);
-                await ts3Client.SendChannelMessage($"{res}已加入歌单");
+                await PlayListAdd(argments, 1);
             }
             else
             {
                 // 输入为歌名
                 songname = argments;
                 id = await musicapi.SearchSong(songname, 1);
-                await ts3Client.SendChannelMessage($"搜索歌名{songname}-得到id\"{argments}\"");
-                
-                string res = await PlayListAdd(id, 1);
-                await ts3Client.SendChannelMessage($"{res}已加入歌单");
+                await ts3Client.SendChannelMessage($"搜索歌名{songname}-得到id\"{id}\"");
+                await PlayListAdd(id, 1);
             }
             
         }
@@ -964,12 +1120,43 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 await PlayListNext();
             }
         }
+        private async Task OnAlone(object sender, EventArgs e)
+        {
+            var args = e as AloneChanged;
+            if (args != null)
+            {
+                if(args.Alone)
+                {// 频道无人
+                    if(!player.Paused)
+                    {
+                        waiting_time = 1;
+                        while(waiting_time  <= max_wait_alone && waiting_time !=0)
+                        {
+                            waiting_time++;
+                            await Task.Delay(1000);
+                            if (waiting_time >= max_wait_alone)
+                            {// 等待三十秒
+                                MainCommands.CommandPause(player);
+                                await ts3Client.SendServerMessage("频道无人，已自动暂停音乐");
+                                waiting_time = 0;
+                                break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    waiting_time = 0;
+                }
+            }
+        }
         public void Dispose()
         {
             // Don't forget to unregister everything you have subscribed to,
             // otherwise your plugin will remain in a zombie state
             plugin_config_parser.WriteFile(iniPath, plugin_config);
             player.OnSongEnd -= OnSongEnd;
+            ts3Client.OnAloneChanged -= OnAlone;
             if (isLyric == true) 
             {
                 isLyric = false;

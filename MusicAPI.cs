@@ -31,6 +31,16 @@ namespace MusicAPI
         public string ptqrtoken;
         public string qrsig;
 
+        // 报错信息文本
+        private static string error_http_error = "http请求发生错误";
+        private static string error_json_error = "Json解析错误，是否部署了正确api，是否登录";
+        // private static string error_error_no_detail = "获取歌曲信息失败，请检查";
+        // private static string error_no_url = "获取歌曲URL失败，检查是否登录";
+
+        // 重试参数
+        private static int maxtry = 2;
+        private static int trydelay = 1000;
+
         //--------------------------参数设置--------------------------
         public void SetCookies(string cookies, int type_music)
         {
@@ -93,7 +103,15 @@ namespace MusicAPI
         {
             // 获取登录二维码
             string login_key_url = $"{addresss[1]}/user/getLoginQr/qq";
-            string Json_get = await HttpGetAsync(login_key_url);
+            string Json_get;
+            try
+            {
+                Json_get = await HttpGetAsync(login_key_url);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"访问QQ音乐二维码登录api失败, 检查是否部署支持扫码登录的API-msg:{e.Message}-{login_key_url}");
+            }
             if (Json_get == null)
             {
                 return null;
@@ -111,7 +129,6 @@ namespace MusicAPI
 
             return stream;
         }
-        
         public async Task<Dictionary<string,string>> CheckQQLoginStatus()
         {
             // 检查登录情况
@@ -225,42 +242,80 @@ namespace MusicAPI
             // 获取歌曲URL
             if (type_music == 0)
             {
-                // 网易云音乐
-                string url = $"{addresss[type_music]}/song/url/v1?id={Song_id}&level=exhigh";
-                if (cookies[type_music] != "")
+
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    url += $"&cookie={cookies[type_music]}";
+                    // 网易云音乐
+                    string url = $"{addresss[type_music]}/song/url/v1?id={Song_id}&level=exhigh";
+                    if (cookies[type_music] != "")
+                    {
+                        url += $"&cookie={cookies[type_music]}";
+                    }
+                    string Json_get;
+                    try
+                    {// http get错误
+                        Json_get = await HttpGetAsync(url);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    int code = jsonObject["code"]?.Value<int>() ?? 0;
+                    if (code != 200)
+                    {// code不为200
+                        string errorMsg = jsonObject["message"]?.Value<string>() ?? "Unknown error";
+                        throw new InvalidOperationException($"{error_http_error}-code:{code}: {errorMsg}-{url}");
+                    }
+                    // 解析数据
+                    try
+                    {
+                        string Songurl = jsonObject["data"][0]["url"].ToString();
+                        return Songurl;
+                    }
+                    catch (Exception)
+                    {// JSON解析错误
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                string Json_get = await HttpGetAsync(url);
-                if (Json_get == null)
-                {
-                    return null;
-                }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                string Songurl = data.data[0].url;
-                
-                return Songurl == "null" ? null : Songurl;
+                return null;
             }
             else if (type_music == 1)
             {
-                // QQ音乐
-                string url = $"{addresss[type_music]}/song/urls?id={Song_id}";
-                
-                string Json_get = await HttpGetWithCookiesAsync(url,type_music);
-                if (Json_get == null)
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    return null;
+                    // QQ音乐
+                    string url = $"{addresss[type_music]}/song/urls?id={Song_id}";
+                    string Json_get;
+                    try
+                    {// http get
+                        Json_get = await HttpGetWithCookiesAsync(url, type_music);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    // 解析JSON
+                    try
+                    {
+                        string Songurl = "";
+                        var data = jsonObject["data"] as JObject;
+                        foreach (var item in data.Properties())
+                        {
+                            Songurl = item.Value.ToString();
+                            break;
+                        }
+                        return Songurl;
+                    }
+                    catch (Exception)
+                    {
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                // return Json_get;
-                JObject data = JObject.Parse(Json_get);
-                data = (JObject)data["data"];
-                string Songurl = "";
-                foreach (var item in data)
-                {
-                    Songurl = item.Value.ToString();
-                    break;
-                }
-                return Songurl;
+                return null;
             }
             return null;
         }
@@ -269,57 +324,81 @@ namespace MusicAPI
             // 获取歌曲详细信息 返回值包括 "name":<歌曲名>, "picurl":<封面url>
             if (type_music == 0)
             {
-                // 网易云音乐
-                string url = $"{addresss[type_music]}/song/detail?ids={Song_id}";
-                var Json_get = await HttpGetAsync(url);
-                
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                Dictionary<string, string> re = new Dictionary<string, string>();
-                if (Json_get == null)
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    return null;
+                    // 网易云音乐
+                    string url = $"{addresss[type_music]}/song/detail?ids={Song_id}";
+                    string Json_get;
+                    try
+                    {// http get错误
+                        Json_get = await HttpGetAsync(url);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    int code = jsonObject["code"]?.Value<int>() ?? 0;
+                    if (code != 200)
+                    {// code不为200
+                        string errorMsg = jsonObject["message"]?.Value<string>() ?? "Unknown error";
+                        throw new InvalidOperationException($"{error_http_error}-code:{code}: {errorMsg}-{url}");
+                    }
+                    // 解析数据
+                    Dictionary<string, string> re = new Dictionary<string, string>();
+                    try
+                    {
+                        string name = jsonObject["songs"][0]["name"].ToString();
+                        string author = jsonObject["songs"][0]["ar"][0]["name"].ToString();
+                        string picurl = jsonObject["songs"][0]["al"]["picUrl"].ToString();
+                        re.Add("name", name);
+                        re.Add("author", author);
+                        re.Add("picurl", picurl);
+                        return re;
+                    }
+                    catch (Exception)
+                    {// JSON解析错误
+                        if(trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                try
-                {
-                    string name = data.songs[0].name;
-                    string author = data.songs[0].ar[0].name;
-                    string picurl  = data.songs[0].al.picUrl;
-                    re.Add("name", name);
-                    re.Add("author", author);
-                    re.Add("picurl", picurl);
-                    return re;
-                }
-                catch (Exception)
-                {
-                    return null;
-                }
+                return null;
             }
             else if (type_music == 1)
             {
-                string url = $"{addresss[1]}/song?songmid={Song_id}";
-                var Json_get = await HttpGetWithCookiesAsync(url,type_music);
-
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                Dictionary<string, string> re = new Dictionary<string, string>();
-                if (Json_get == null)
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    return null;
+                    string url = $"{addresss[1]}/song?songmid={Song_id}";
+                    string Json_get;
+                    try
+                    {// http get错误
+                        Json_get = await HttpGetWithCookiesAsync(url, type_music);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    Dictionary<string, string> re = new Dictionary<string, string>();
+                    // 解析JSON
+                    try
+                    {
+                        string name = jsonObject["data"]["track_info"]["name"].ToString();
+                        string author = jsonObject["data"]["track_info"]["singer"][0]["name"].ToString();
+                        string pmid = jsonObject["data"]["track_info"]["album"]["pmid"].ToString();
+                        string picurl = $"https://y.gtimg.cn/music/photo_new/T002R300x300M000{pmid}.jpg";
+                        re.Add("name", name);
+                        re.Add("author", author);
+                        re.Add("picurl", picurl);
+                        return re;
+                    }
+                    catch (Exception)
+                    {
+                        if(trytime == maxtry -1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                try
-                {
-                    string name = data.data.track_info.name;
-                    string author = data.data.track_info.singer[0].name;
-                    string pmid = data.data.track_info.album.pmid;
-                    string picurl = $"https://y.gtimg.cn/music/photo_new/T002R300x300M000{pmid}.jpg";
-                    re.Add("name", name);
-                    re.Add("author", author);
-                    re.Add("picurl", picurl);
-                    return re;
-                }
-                catch (Exception)
-                {
-                    return null;
-                }
+                return null;
             }
             else
             {
@@ -331,30 +410,66 @@ namespace MusicAPI
             // 查找歌曲, 返回类型为id或者错误 0
             if (type_music == 0)
             {
-                // 网易云音乐
-                string url = $"{addresss[type_music]}/search?keywords={Song_name}?limit=1";
-                var Json_get = await HttpGetAsync(url);
-                if (Json_get == null)
+                for(int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    return "0";
+                    // 网易云音乐
+                    string url = $"{addresss[type_music]}/search?keywords={Song_name}&limit=1";
+                    string Json_get;
+                    try
+                    {
+                        Json_get = await HttpGetAsync(url);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    int code = jsonObject["code"]?.Value<int>() ?? 0;
+                    if (code != 200)
+                    {// code不为200
+                        string errorMsg = jsonObject["message"]?.Value<string>() ?? "Unknown error";
+                        throw new InvalidOperationException($"{error_http_error}-code:{code}: {errorMsg}-{url}");
+                    }
+                    try
+                    {
+                        string id_get = jsonObject["result"]["songs"][0]["id"].ToString();
+                        return id_get;
+                    }
+                    catch (Exception)
+                    {
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                long id_get_int = data.result.songs[0].id;
-                string id_get = id_get_int.ToString();
-                return id_get;
+                return null;
             }
             else if (type_music == 1)
             {
-                // QQ音乐
-                string url = $"{addresss[type_music]}/search?key={Song_name}&pageSize=1";
-                var Json_get = await HttpGetWithCookiesAsync(url, type_music);
-                if (Json_get == null)
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    return "0";
+                    // QQ音乐
+                    string url = $"{addresss[type_music]}/search?key={Song_name}&pageSize=1";
+                    string Json_get;
+                    try
+                    {
+                        Json_get = await HttpGetWithCookiesAsync(url,type_music);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    try
+                    {
+                        string id_get = jsonObject["data"]["list"][0]["songmid"].ToString();
+                        return id_get;
+                    }
+                    catch (Exception)
+                    {
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                string id_get = data.data.list[0].songmid;
-                return id_get;
             }
             return "0";
         }
@@ -363,116 +478,199 @@ namespace MusicAPI
             List<Dictionary<TimeSpan, string>>  lyric = new List<Dictionary<TimeSpan, string>>();
             if (type_music == 0)
             {
-                // 网易云音乐
-                string url = $"{addresss[type_music]}/lyric?id={Song_id}";
-                var Json_get = await HttpGetAsync(url);
-                if (Json_get == null)
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    return null;
-                }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                string lyric_all;
-                if (data.tlyric.lyric!="")
-                {// 若有翻译
-                    lyric_all = data.tlyric.lyric;
-                }
-                else
-                {
-                    lyric_all = data.lrc.lyric;
-                }
-                // 格式转化
-                string[] lines = lyric_all.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var line in lines)
-                {
-                    int closingBracketIndex = line.IndexOf(']');
-                    if (closingBracketIndex <= 0) continue;
-
-                    string timePart = line.Substring(1, closingBracketIndex - 1);
-                    string lyric_single = line.Substring(closingBracketIndex + 1).Trim();
-
-                    if (string.IsNullOrWhiteSpace(lyric_single)) continue;
-
-                    if (TimeSpan.TryParseExact(timePart, @"mm\:ss\.fff", CultureInfo.InvariantCulture, out TimeSpan timestamp))
+                    // 网易云音乐
+                    string url = $"{addresss[type_music]}/lyric?id={Song_id}";
+                    string Json_get;
+                    try
+                    {// http get错误
+                        Json_get = await HttpGetAsync(url);
+                    }
+                    catch (Exception e)
                     {
-                        var lyricEntry = new Dictionary<TimeSpan, string>();
-                        lyricEntry.Add(timestamp, lyric_single);
-                        lyric.Add(lyricEntry);
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    int code = jsonObject["code"]?.Value<int>() ?? 0;
+                    if (code != 200)
+                    {// code不为200
+                        string errorMsg = jsonObject["message"]?.Value<string>() ?? "Unknown error";
+                        throw new InvalidOperationException($"{error_http_error}-code:{code}: {errorMsg}-{url}");
+                    }
+                    // 解析数据
+                    try
+                    {
+                        string lyric_all;
+                        /*
+                        if (jsonObject["tlyric"]["lyric"].ToString() != "")
+                        {// 若有翻译获取翻译
+                            lyric_all = jsonObject["tlyric"]["lyric"].ToString();
+                        }
+                        else
+                        {
+                            lyric_all = jsonObject["lrc"]["lyric"].ToString();
+                        }
+                        */
+                        lyric_all = jsonObject["lrc"]["lyric"].ToString();
+                        // 格式转化
+                        string[] lines = lyric_all.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var line in lines)
+                        {
+                            int closingBracketIndex = line.IndexOf(']');
+                            if (closingBracketIndex <= 0) continue;
+
+                            string timePart = line.Substring(1, closingBracketIndex - 1);
+                            string lyric_single = line.Substring(closingBracketIndex + 1).Trim();
+
+                            if (string.IsNullOrWhiteSpace(lyric_single)) continue;
+
+                            if (TimeSpan.TryParseExact(timePart, @"mm\:ss\.fff", CultureInfo.InvariantCulture, out TimeSpan timestamp))
+                            {
+                                var lyricEntry = new Dictionary<TimeSpan, string>();
+                                lyricEntry.Add(timestamp, lyric_single);
+                                lyric.Add(lyricEntry);
+                            }
+                        }
+                        return lyric;
+                    }
+                    catch (Exception)
+                    {// JSON解析错误
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
                     }
                 }
-                return lyric;
+                return null;
             }
             else if (type_music == 1)
             {
-                // QQ音乐
-                string url = $"{addresss[type_music]}/lyric?songmid={Song_id}";
-                var Json_get = await HttpGetAsync(url);
-                if (Json_get == null)
-                {
-                    return null;
-                }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                // 检查接口返回状态码
-                if (data.result != 100)
-                {
-                    return null;
-                }
-                string lyric_all;
-                if (data.data.trans != "")
-                {// 若有翻译
-                    lyric_all = data.data.trans;
-                }
-                else
-                {
-                    lyric_all = data.data.lyric;
-                }
-                string[] lines = lyric_all.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
-                foreach (string line in lines)
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    Match match = Regex.Match(line, @"^\[(\d{2}:\d{2}\.\d{2})\](.*)$");
-                    if (match.Success)
+                    // QQ音乐
+                    string url = $"{addresss[type_music]}/lyric?songmid={Song_id}";
+                    string Json_get;
+                    try
+                    {// http get错误
+                        Json_get = await HttpGetAsync(url);
+                    }
+                    catch (Exception e)
                     {
-                        string timeStr = match.Groups[1].Value;
-                        string lyric_single = match.Groups[2].Value.Trim();
-
-                        if (TimeSpan.TryParseExact(timeStr, @"mm\:ss\.ff", CultureInfo.InvariantCulture, out TimeSpan time))
-                        {
-                            Dictionary<TimeSpan, string> entry = new Dictionary<TimeSpan, string>();
-                            entry.Add(time, lyric_single);
-                            lyric.Add(entry);
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    // 解析数据
+                    try
+                    {
+                        string lyric_all;
+                        /*
+                        if (jsonObject["data"]["trans"].ToString() != "")
+                        {// 若有翻译获取翻译
+                            lyric_all = jsonObject["data"]["trans"].ToString();
                         }
+                        else
+                        {
+                            lyric_all = jsonObject["data"]["lyric"].ToString();
+                        }
+                        */
+                        lyric_all = jsonObject["data"]["lyric"].ToString();
+                        // 格式转化
+                        string[] lines = lyric_all.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (string line in lines)
+                        {
+                            Match match = Regex.Match(line, @"^\[(\d{2}:\d{2}\.\d{2})\](.*)$");
+                            if (match.Success)
+                            {
+                                string timeStr = match.Groups[1].Value;
+                                string lyric_single = match.Groups[2].Value.Trim();
+
+                                if (TimeSpan.TryParseExact(timeStr, @"mm\:ss\.ff", CultureInfo.InvariantCulture, out TimeSpan time))
+                                {
+                                    Dictionary<TimeSpan, string> entry = new Dictionary<TimeSpan, string>();
+                                    entry.Add(time, lyric_single);
+                                    lyric.Add(entry);
+                                }
+                            }
+                        }
+                        return lyric;
+                    }
+                    catch (Exception)
+                    {// JSON解析错误
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
                     }
                 }
+                return null;
             }
-                return lyric;
+             return null;
         }
         //-------------------------获取歌单--------------------------
         public async Task<long> SearchPlayList(string PlayList_name, int type_music)
         {
             if (type_music == 0) {
-                // 网易云音乐歌单搜索
-                string searchurl = $"{addresss[type_music]}/search?keywords={PlayList_name}&limit=1&type=1000";
-                var Json_get = await HttpGetAsync(searchurl);
-                if (Json_get == null)
+                for(int trytime = 0; trytime< maxtry; trytime++)
                 {
-                    return 0;
+                    // 网易云音乐歌单搜索
+                    string url = $"{addresss[type_music]}/search?keywords={PlayList_name}&limit=1&type=1000";
+                    string Json_get;
+                    try
+                    {// http get错误
+                        Json_get = await HttpGetAsync(url);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    int code = jsonObject["code"]?.Value<int>() ?? 0;
+                    if (code != 200)
+                    {// code不为200
+                        string errorMsg = jsonObject["message"]?.Value<string>() ?? "Unknown error";
+                        throw new InvalidOperationException($"{error_http_error}-code:{code}: {errorMsg}-{url}");
+                    }
+                    try
+                    {// 解析数据
+                        string id_get = jsonObject["result"]["playlists"][0]["id"].ToString();
+                        long id = long.Parse(id_get);
+                        return id;
+                    }
+                    catch (Exception)
+                    {
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                long id_get = data.result.playlists[0].id;
-                return id_get;
+                return 0;
             }
             else if(type_music == 1)
             {
-                // QQ音乐歌单搜索
-                string searchurl = $"{addresss[1]}/search?key={PlayList_name}&t=2";
-                var Json_get = await HttpGetWithCookiesAsync(searchurl,type_music);
-                if (Json_get == null)
+                for (int trytime = 0; trytime < maxtry; trytime++)
                 {
-                    return 0;
+                    // QQ音乐
+                    string url = $"{addresss[1]}/search?key={PlayList_name}&t=2";
+                    string Json_get;
+                    try
+                    {
+                        Json_get = await HttpGetWithCookiesAsync(url, type_music);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    try
+                    {
+                        string id_get = jsonObject["data"]["list"][0]["dissid"].ToString();
+                        long id = long.Parse (id_get);
+                        return id;
+                    }
+                    catch (Exception)
+                    {
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                long id_get = data.data.list[0].dissid;
-                return id_get;
+                return 0;
             }
             return 0;
         }
@@ -487,30 +685,30 @@ namespace MusicAPI
                 {
                     url += $"&cookie={cookies[type_music]}";
                 }
-                var Json_get = await HttpGetAsync(url);
+                string Json_get = await HttpGetAsync(url);
                 if (Json_get == null)
                 {
                     return null;
                 }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
+                var jsonObject = JObject.Parse(Json_get);
                 // 歌单信息获取完成
-                int code = data.code;
-                int song_count = data.playlist.trackCount;
-                
+                int code = (int)jsonObject["code"];
+                int song_count = (int)jsonObject["playlist"]["trackCount"];
+
                 if (code == 200)
                 {
-                    for (int i = 0; i < song_count/50 + 1; i++)
+                    for (int i = 0; i < song_count / 50 + 1; i++)
                     {
                         // 每次循环获得50首，若剩余小于50则取剩余数
-                        for (int j = 0; j < ((song_count - i*50 )< 50 ?song_count - i * 50 :50); j++)
+                        for (int j = 0; j < ((song_count - i * 50) < 50 ? song_count - i * 50 : 50); j++)
                         {
                             // 获取i*50到i*50+50之间
-                            string tracks_url = $"{addresss[type_music]}/playlist/track/all?id={PlayList_id}&limit=50&offset={i*50}";
-                            if(cookies[type_music] != "")
+                            string tracks_url = $"{addresss[type_music]}/playlist/track/all?id={PlayList_id}&limit=50&offset={i * 50}";
+                            if (cookies[type_music] != "")
                             {
                                 tracks_url += $"&cookie={cookies[type_music]}";
                             }
-                            var tracks_Json_get = await HttpGetAsync(tracks_url);
+                            string tracks_Json_get = await HttpGetAsync(tracks_url);
 
                             if (tracks_Json_get == null)
                             {
@@ -519,7 +717,7 @@ namespace MusicAPI
                             dynamic tracks_data = JsonConvert.DeserializeObject<dynamic>(tracks_Json_get);
                             // i*50到i*50+50获取完成
                             long song_id = tracks_data.songs[j].id;
-                            string song_name  = tracks_data.songs[j].name;
+                            string song_name = tracks_data.songs[j].name;
                             string song_author = tracks_data.songs[j].ar[0].name;
 
                             re.Add(new Dictionary<string, string> { { "id", song_id.ToString() }, { "name", song_name }, { "author", song_author } });
@@ -530,23 +728,39 @@ namespace MusicAPI
             }
             else if (type_music == 1)
             {
-                // QQ音乐歌单获取
-                string url = $"{addresss[1]}/songlist?id={PlayList_id}";
-                var Json_get = await HttpGetWithCookiesAsync(url,type_music);
-                if (Json_get == null)
+                for(int trytime = 0; trytime <maxtry;  trytime++)
                 {
-                    return null;
+                    // QQ音乐
+                    string url = $"{addresss[1]}/songlist?id={PlayList_id}";
+                    string Json_get;
+                    try
+                    {// http get错误
+                        Json_get = await HttpGetAsync(url);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                    }
+                    var jsonObject = JObject.Parse(Json_get);
+                    try
+                    {// 解析json
+                        int song_count = (int)jsonObject["data"]["songnum"];
+                        for (int i = 0; i< song_count; i++)
+                        {
+                            string song_mid = jsonObject["data"]["songlist"][i]["songmid"].ToString();
+                            string song_name = jsonObject["data"]["songlist"][i]["songname"].ToString();
+                            string song_author = jsonObject["data"]["songlist"][i]["singer"][0]["name"].ToString();
+                            re.Add(new Dictionary<string, string> { { "id", song_mid }, { "name", song_name }, { "author", song_author } });
+                        }
+                        return re;
+                    }
+                    catch (Exception)
+                    {
+                        if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                        await Task.Delay(trydelay);
+                    }
                 }
-                dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-                int song_count = data.data.songnum;
-                for (int i = 0; i <song_count ; i++) 
-                {
-                    string song_mid = data.data.songlist[i].songmid;
-                    string song_name = data.data.songlist[i].songname;
-                    string song_author = data.data.songlist[i].singer[0].name;
-                    re.Add(new Dictionary<string, string> { { "id", song_mid }, { "name", song_name }, { "author", song_author } });
-                }
-                return re;
+                return null;
             }
             return null;
         }
@@ -558,16 +772,38 @@ namespace MusicAPI
             {
                 url += $"&cookie={cookies[0]}";
             }
-            var Json_get = await HttpGetAsync(url);
-            if (Json_get == null)
+            for(int trytime = 0; trytime < maxtry; trytime++)
             {
-                return "0";
+                string Json_get;
+                try
+                {// http get错误
+                    Json_get = await HttpGetAsync(url);
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidOperationException($"{error_http_error}-msg:{e.Message}-{url}");
+                }
+                var jsonObject = JObject.Parse(Json_get);
+                int code = jsonObject["code"]?.Value<int>() ?? 0;
+                if (code != 200)
+                {// code不为200
+                    string errorMsg = jsonObject["message"]?.Value<string>() ?? "Unknown error";
+                    throw new InvalidOperationException($"{error_http_error}-code:{code}: {errorMsg}-{url}");
+                }
+                string id=null;
+                try
+                {
+                    id = jsonObject["data"][0]["id"].ToString();
+                    return id;
+                }
+                catch (Exception)
+                {
+                    if (trytime == maxtry - 1) { throw new ArgumentException($"{error_json_error}-{Json_get}"); }
+                    await Task.Delay(800);
+                }
             }
-            dynamic data = JsonConvert.DeserializeObject<dynamic>(Json_get);
-
-            long id = 0;
-            id = data.data[0].id;
-            return id.ToString();
+            return null ;
+           
         }
 
         //--------------------------HTTP相关--------------------------
@@ -586,9 +822,7 @@ namespace MusicAPI
             }
             catch (HttpRequestException e)
             {
-                // 捕捉并打印HTTP请求的异常
-                Console.WriteLine($"Error: {e.Message}");
-                return null;
+                throw e;
             }
         }
         public async Task<string> HttpGetWithCookiesAsync(string url, int type_music)
@@ -644,13 +878,11 @@ namespace MusicAPI
                     }
                     catch (HttpRequestException e)
                     {
-                        Console.WriteLine($"HTTP Request Error: {e.Message}");
-                        return null;
+                        throw e;
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"General Error: {ex.Message}");
-                        return null;
+                        throw ex;
                     }
                 }
             }
@@ -673,8 +905,7 @@ namespace MusicAPI
                 catch (HttpRequestException e)
                 {
                     // 异常处理
-                    Console.WriteLine($"Error: {e.Message}");
-                    return e.Message;
+                    throw e;
                 }
             }
         }

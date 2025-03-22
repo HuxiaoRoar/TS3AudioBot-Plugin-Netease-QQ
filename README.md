@@ -1,7 +1,9 @@
 # TS3AudioBot-Plugin-Netease-QQ
 >基于Splamy/TS3AudioBot项目 https://github.com/Splamy/TS3AudioBot
->基于网易云API项目 https://github.com/Binaryify/neteasecloudmusicapi [文档地址1(存活)](https://binaryify.github.io/NeteaseCloudMusicApi/#/)
->基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi [文档地址](https://qq-api-soso.vercel.app/#/)
+>基于网易云音乐API项目 https://github.com/Binaryify/neteasecloudmusicapi
+>网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/
+>基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi
+>QQ音乐API文档 https://qq-api-soso.vercel.app/#/
 
 参考了[ZHANGTIANYAO1](https://github.com/ZHANGTIANYAO1)的[TS3AudioBot-NetEaseCloudmusic-plugin](https://github.com/ZHANGTIANYAO1/TS3AudioBot-NetEaseCloudmusic-plugin)项目
 参考了[FiveHair](https://github.com/FiveHair)的[TS3AudioBot-NetEaseCloudmusic-plugin-UNM](https://github.com/FiveHair/TS3AudioBot-NetEaseCloudmusic-plugin-UNM)项目
@@ -9,12 +11,16 @@
 TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐和网易云音乐。
 需要自行部署1. TS3AudioBot  2.网易云API 3.QQ音乐API （API也可只部署其中一个）
 只测试过在Docker环境下能正常使用，理论Windows和Linux同样支持，推荐使用docker。
+
 ## 功能介绍
+- 支持QQ音乐和网易云音乐扫码登录
 - 指令点歌，使用`!bgm play xxx`指令播放，使用`!qq play xxx`可以播放QQ音乐里的歌曲，同时支持输入ID和歌名查询（建议输入ID）。
-- 支持播放模式切换，使用`!bgm mode xxx`来切换，支持[0=顺序播放 1=单曲循环 2=顺序循环 3=随机循环]。
-- 支持网易云FM模式，使用`!wyy fm`进入fm播放模式，进入后使用`bgm next`进入下一首歌
+- 支持播放模式切换，使用`!bgm mode xxx`来切换，支持[0=顺序播放 1=单曲循环 2=顺序循环 3=随机播放]。
+- 支持网易云FM模式，使用`!wyy fm`进入fm播放模式，进入后使用`!bgm next`进入下一首歌
 - 内置歌曲列表，使用`!bgm ls`查看当前的播放歌曲列表，使用`!bgm go xxx`跳转歌曲，使用`!bgm rm xxx`来删除歌曲，使用`!bgm clear`来清除列表。
-- 新增歌词功能，使用`!bgm lyric`开启，默认关闭。
+- 支持歌词功能，使用`!bgm lyric`开启，默认关闭，歌词会显示在机器人的简介。
+- 频道无人超出30s自动停止播放。
+
 ## 基本使用方法
 您需要部署TS3AudioBot，网易云API，QQ音乐API。
 1. 安装插件，将[**TS3AudioBot-Plugin-Netease-QQ.dll**](https://github.com/RayQuantum/TS3AudioBot-Plugin-Netease-QQ/releases/download/v1.0.0/TS3AudioBot-Plugin-Netease-QQ.dll)文件以及配置文件netease_qq_config.ini复制到TS3AudioBot的/plugins文件夹下，如果没有请自行创建插件文件夹，文件的目录应该如下：
@@ -45,6 +51,7 @@ cookies = ""
 4. 添加频道描述
 5. 输入指令`!wyy login`，此时查看音乐机器人的头像，变成了二维码，扫码后登录成功，即可开始使用。
 后续是使用docker的详细部署过程
+
 ### 频道描述（复制到频道说明）
 ```
 [COLOR=#0000ff]私聊机器人，指令如下(把[xxx]替换成对应信息，删除中括号)[/COLOR]
@@ -89,26 +96,30 @@ cookies = ""
 QQ音乐
 1.登录qq账号(使用QQ扫码登录)
 [COLOR=#0eb050]!qq login[/COLOR]
-2.立即播放QQ音乐(QQ音乐id是带字母的)
+2.使用cookie登录qq账号(使用cookie登录)
+[COLOR=#0eb050]!qq cookie [填入cookie][/COLOR]
+3.立即播放QQ音乐(QQ音乐id是带字母的)
 [COLOR=#0eb050]!qq play [音乐id或者名称][/COLOR]
-3.添加音乐到下一首
+4.添加音乐到下一首
 [COLOR=#0eb050]!qq add [音乐id或者名称][/COLOR]
-4.播放QQ音乐歌单
+5.播放QQ音乐歌单
 [COLOR=#0eb050]!qq gd [歌单id或者名称][/COLOR]
-5.加载本地的QQ的cookie
+6.加载本地的QQ的cookie
 [COLOR=#0eb050]!qq load[/COLOR]
-需要注意的是如果歌单歌曲过多需要时间加载，期间[B]一定一定不要[/B]输入其他指令
+需要注意的是如果歌单歌曲过多需要时间加载
 以下例子加粗的就是音乐或者歌单id
 网易云歌：https://music.163.com/#/song?id=[B]254548[/B]
 网易云歌单：https://music.163.com/#/playlist?id=[B]545016340[/B]
 QQ歌：https://y.qq.com/n/ryqq/songDetail/[B]004Z8Ihr0JIu5s[/B]
 QQ歌单：https://y.qq.com/n/ryqq/playlist/[B]3805603854[/B]
 ```
+
 ## 使用docker从零部署音乐机器人
 使用三个docker实现部署机器人
 - [TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)
 - [网易云API Docker安装](https://binaryify.github.io/NeteaseCloudMusicApi/#/?id=docker-%e5%ae%b9%e5%99%a8%e8%bf%90%e8%a1%8c)
 - [QQmusicAPI_dockerImage](https://github.com/RayQuantum/QQmusicAPI_docker_Image)
+
 ### 1. 使用docker部署TS3AudioBot
 原始项目来源[TS3AudioBot](https://github.com/Splamy/TS3AudioBot)，推荐使用docker版部署[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)，这里把安装教程翻译了一下。推荐先拉取镜像`ancieque/ts3audiobot:0.12.0`。
 1. 创建默认文件夹，先找到一个放项目的文件夹这里假设是`/home/ray/ts3bot/data`，创建后将其分配给9999用户，因为docker中的用户是9999，不修改的话会导致读取不了文件。
@@ -232,14 +243,16 @@ docker run --name ts3audiobot -d --mount type=bind,source="$(pwd)/data",target=/
 11. 启用插件，在TS3服务器中和机器人私聊，输入`!plugin list`，你会看到输出`#0|RDY|Netease_QQ_plugin (BotPlugin)`，随后输入`!plugin load 0`（具体序号看自己的输出），结果为`#0|+ON|Netease_QQ_plugin (BotPlugin)`则成功启用了插件。
 12. 添加频道描述
 到此TS3音乐机器人安装完成。
-### 部署网易云API
+
+### 2.部署网易云API
 原文链接：https://binaryify.github.io/NeteaseCloudMusicApi
 1. 部署容器
 ```
 docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_cloud_music_api
 ```
 2. 尝试连接，登录网站http://127.0.0.1:3000，看到有网易云api的提示即安装完成
-### 部署QQ音乐API
+
+### 3.部署QQ音乐API
 原项目：https://github.com/jsososo/QQMusicApi
 分支项目：https://github.com/yunxiangjun/QQMusicApi/tree/master
 为了支持扫码登录和cookie保存，这里我自己修改了一下原项目的代码，重新打包了一个docker文件，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下。
@@ -251,5 +264,6 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 docker run -d -p 3300:3300 --name qqmusic_api qqmusicapi_qr
 ```
 3. 尝试连接，登录网站http://127.0.0.1:3300，看到有QQ音乐api的提示即安装完成
+
 ## 写在最后
 原本这个插件在24年6月就写完了，直到今天我才翻出来重新完善，由此插件还有很多bug，希望大家遇到问题可以提出。
