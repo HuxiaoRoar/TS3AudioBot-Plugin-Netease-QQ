@@ -23,7 +23,7 @@ TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐�
 
 ## 基本使用方法
 您需要部署TS3AudioBot，网易云API，QQ音乐API。
-1. 安装插件，将[**TS3AudioBot-Plugin-Netease-QQ.dll**](https://github.com/RayQuantum/TS3AudioBot-Plugin-Netease-QQ/releases/download/v1.0.0/TS3AudioBot-Plugin-Netease-QQ.dll)文件以及配置文件netease_qq_config.ini复制到TS3AudioBot的/plugins文件夹下，如果没有请自行创建插件文件夹，文件的目录应该如下：
+1. 安装插件，将[**TS3AudioBot-Plugin-Netease-QQ.dll**](https://github.com/RayQuantum/TS3AudioBot-Plugin-Netease-QQ/releases/download/v1.2.0/TS3AudioBot-Plugin-Netease-QQ.dll)文件以及配置文件netease_qq_config.ini复制到TS3AudioBot的/plugins文件夹下，如果没有请自行创建插件文件夹，文件的目录应该如下：
 ```
 - Bots
   - default
@@ -255,7 +255,7 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 
 ### 3.部署QQ音乐API
 原项目：https://github.com/jsososo/QQMusicApi
-分支项目：https://github.com/yunxiangjun/QQMusicApi/tree/master
+分支项目：https://github.com/yunxiangjun/QQMusicApi/tree/master。（支持扫码登陆）
 为了支持扫码登录和cookie保存，这里我自己修改了一下原项目的代码，重新打包了一个docker文件，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下。
 部署QQ音乐API由于没有官方的Docker镜像，所以这里我自己打包了一个上传在另外一个项目[QQmusicAPI_docker_Image](https://github.com/RayQuantum/QQmusicAPI_docker_Image)，文件较大，具体部署步骤可以查看该项目内。
 下载链接：https://github.com/RayQuantum/QQmusicAPI_docker_Image/releases/download/v1.1.0/qqmusic_qr_image.tar
