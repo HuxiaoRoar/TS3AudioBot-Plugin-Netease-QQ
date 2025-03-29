@@ -19,6 +19,8 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Globalization;
 using System.Reflection.Metadata;
+using System.Xml.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace MusicAPI
 {
@@ -237,12 +239,11 @@ namespace MusicAPI
         }
 
         //--------------------------获取歌曲--------------------------  
-        public async Task<string> GetSongUrl(string Song_id, int type_music)
-        {
+        public async Task<string> GetSongUrl(string Song_id, int type_music, string mediamid = "")
+        {// 仅QQ音乐会需要mediamid
             // 获取歌曲URL
             if (type_music == 0)
             {
-
                 for (int trytime = 0; trytime < maxtry; trytime++)
                 {
                     // 网易云音乐
@@ -286,7 +287,7 @@ namespace MusicAPI
                 for (int trytime = 0; trytime < maxtry; trytime++)
                 {
                     // QQ音乐
-                    string url = $"{addresss[type_music]}/song/urls?id={Song_id}";
+                    string url = $"{addresss[type_music]}/song/url?id={Song_id}&mediaId={mediamid}";
                     string Json_get;
                     try
                     {// http get
@@ -301,12 +302,7 @@ namespace MusicAPI
                     try
                     {
                         string Songurl = "";
-                        var data = jsonObject["data"] as JObject;
-                        foreach (var item in data.Properties())
-                        {
-                            Songurl = item.Value.ToString();
-                            break;
-                        }
+                        Songurl = jsonObject["data"].ToString();
                         return Songurl;
                     }
                     catch (Exception)
@@ -390,6 +386,9 @@ namespace MusicAPI
                         re.Add("name", name);
                         re.Add("author", author);
                         re.Add("picurl", picurl);
+                        // 新增media_mid，用于url申请，可能会防止空url的出现
+                        string mediamid = jsonObject["data"]?["track_info"]?["file"]?["media_mid"]?.ToString() ?? Song_id;
+                        re.Add("mediamid",mediamid);
                         return re;
                     }
                     catch (Exception)
@@ -405,9 +404,10 @@ namespace MusicAPI
                 return null;
             }
         }
-        public async Task<string> SearchSong(string Song_name, int type_music)
+        public async Task<Dictionary<string, string>> SearchSong(string Song_name, int type_music)
         {
             // 查找歌曲, 返回类型为id或者错误 0
+            Dictionary<string, string> re = new Dictionary<string, string>();
             if (type_music == 0)
             {
                 for(int trytime = 0; trytime < maxtry; trytime++)
@@ -433,7 +433,12 @@ namespace MusicAPI
                     try
                     {
                         string id_get = jsonObject["result"]["songs"][0]["id"].ToString();
-                        return id_get;
+                        string songname = jsonObject["result"]["songs"][0]["name"].ToString();
+                        string authorname = jsonObject["result"]["songs"][0]["artists"][0]["name"].ToString();
+                        re.Add("id",id_get);
+                        re.Add("name",songname);
+                        re.Add("author", authorname);
+                        return re;
                     }
                     catch (Exception)
                     {
@@ -462,7 +467,12 @@ namespace MusicAPI
                     try
                     {
                         string id_get = jsonObject["data"]["list"][0]["songmid"].ToString();
-                        return id_get;
+                        string songname = jsonObject["data"]["list"][0]["songname"].ToString();
+                        string authorname = jsonObject["data"]["list"][0]["singer"][0]["name"].ToString();
+                        re.Add("id", id_get);
+                        re.Add("name", songname);
+                        re.Add("author", authorname);
+                        return re;
                     }
                     catch (Exception)
                     {
@@ -471,7 +481,7 @@ namespace MusicAPI
                     }
                 }
             }
-            return "0";
+            return null;
         }
         public async Task<List<Dictionary<TimeSpan, string>>> GetSongLyric(string Song_id, int type_music)
         {
@@ -524,12 +534,22 @@ namespace MusicAPI
                             string lyric_single = line.Substring(closingBracketIndex + 1).Trim();
 
                             if (string.IsNullOrWhiteSpace(lyric_single)) continue;
-
-                            if (TimeSpan.TryParseExact(timePart, @"mm\:ss\.fff", CultureInfo.InvariantCulture, out TimeSpan timestamp))
+                            // 解析
+                            string[] timeFormats = new string[]
+                            {
+                                @"mm\:ss\.fff", // [11.11.111]
+                                @"mm\:ss\.ff",  // [11.11.11]
+                                @"mm\:ss\.f"    // [11.11.1]
+                            };
+                            if (TimeSpan.TryParseExact(timePart, timeFormats, CultureInfo.InvariantCulture, out TimeSpan timestamp))
                             {
                                 var lyricEntry = new Dictionary<TimeSpan, string>();
                                 lyricEntry.Add(timestamp, lyric_single);
                                 lyric.Add(lyricEntry);
+                            }
+                            else
+                            {
+                                Console.WriteLine($"无法解析时间格式: {timePart}");
                             }
                         }
                         return lyric;
@@ -578,13 +598,18 @@ namespace MusicAPI
                         string[] lines = lyric_all.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
                         foreach (string line in lines)
                         {
-                            Match match = Regex.Match(line, @"^\[(\d{2}:\d{2}\.\d{2})\](.*)$");
+                            Match match = Regex.Match(line, @"^\[(\d{2}:\d{2}\.\d{1,3})\](.*)$");
                             if (match.Success)
                             {
                                 string timeStr = match.Groups[1].Value;
                                 string lyric_single = match.Groups[2].Value.Trim();
-
-                                if (TimeSpan.TryParseExact(timeStr, @"mm\:ss\.ff", CultureInfo.InvariantCulture, out TimeSpan time))
+                                string[] timeFormats = new string[]
+                                {
+                                    @"mm\:ss\.fff", // [11.11.111]
+                                    @"mm\:ss\.ff",  // [11.11.11]
+                                    @"mm\:ss\.f"    // [11.11.1]
+                                };
+                                if (TimeSpan.TryParseExact(timeStr, timeFormats, CultureInfo.InvariantCulture, out TimeSpan time))
                                 {
                                     Dictionary<TimeSpan, string> entry = new Dictionary<TimeSpan, string>();
                                     entry.Add(time, lyric_single);
@@ -603,6 +628,35 @@ namespace MusicAPI
                 return null;
             }
              return null;
+        }
+        public async Task<String> GetmidFromId(string id)
+        {// 把id转为mid
+            string mid = "";
+            string res = await HttpGetWithCookiesAsync($"https://y.qq.com/n/ryqq/songDetail/{id}", 1);
+            // 开始处理
+            string[] afterequal = res.Split("__INITIAL_DATA__ =");
+            if (afterequal.Length != 2)
+            {
+                throw new Exception("分隔__INITIAL_DATA__ =出现错误");
+            }
+            string[] beforescipt = afterequal[1].Split("</script>");
+            
+            if (beforescipt.Length == 1)
+            {
+                throw new Exception("分隔</script>出现错误");
+            }
+            string json_get = beforescipt[0];
+            // 解析json
+            try
+            {
+                var jsonObject = JObject.Parse(json_get);
+                mid = jsonObject["songList"][0]["mid"].ToString();
+            }
+            catch (Exception)
+            {
+                throw new Exception($"Json解析错误-{json_get}");
+            }
+            return mid;
         }
         //-------------------------获取歌单--------------------------
         public async Task<long> SearchPlayList(string PlayList_name, int type_music)
@@ -869,11 +923,8 @@ namespace MusicAPI
                     {
                         HttpResponseMessage response = await client.GetAsync(url);
                         response.EnsureSuccessStatusCode();
-
-                        // 调试输出实际发送的cookies
                         var cookies = handler.CookieContainer.GetCookies(new Uri(url));
-                        Console.WriteLine($"Sent cookies: {string.Join(", ", cookies.Cast<Cookie>().Select(c => $"{c.Name}={c.Value}"))}");
-
+                        // Console.WriteLine($"Sent cookies: {string.Join(", ", cookies.Cast<Cookie>().Select(c => $"{c.Name}={c.Value}"))}");
                         return await response.Content.ReadAsStringAsync();
                     }
                     catch (HttpRequestException e)
@@ -909,7 +960,19 @@ namespace MusicAPI
                 }
             }
         }
+        public async Task<byte[]> HttpGetImage(string url)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "GET";
 
+            using (HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync())
+            using (Stream stream = response.GetResponseStream())
+            using (MemoryStream memoryStream = new MemoryStream())
+            {
+                await stream.CopyToAsync(memoryStream);
+                return memoryStream.ToArray();
+            }
+        }
         //--------------------------其他功能性--------------------------
         public static string GetTimeStamp()
         {

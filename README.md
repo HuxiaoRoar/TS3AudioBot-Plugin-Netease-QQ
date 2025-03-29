@@ -1,9 +1,9 @@
 # TS3AudioBot-Plugin-Netease-QQ
->基于Splamy/TS3AudioBot项目 https://github.com/Splamy/TS3AudioBot
->基于网易云音乐API项目 https://github.com/Binaryify/neteasecloudmusicapi
->网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/
->基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi
->QQ音乐API文档 https://qq-api-soso.vercel.app/#/
+>基于Splamy/TS3AudioBot项目 https://github.com/Splamy/TS3AudioBot 
+>基于网易云音乐API项目 https://github.com/Binaryify/neteasecloudmusicapi 
+>网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/ 
+>基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi 
+>QQ音乐API文档 https://qq-api-soso.vercel.app/#/ 
 
 参考了[ZHANGTIANYAO1](https://github.com/ZHANGTIANYAO1)的[TS3AudioBot-NetEaseCloudmusic-plugin](https://github.com/ZHANGTIANYAO1/TS3AudioBot-NetEaseCloudmusic-plugin)项目
 参考了[FiveHair](https://github.com/FiveHair)的[TS3AudioBot-NetEaseCloudmusic-plugin-UNM](https://github.com/FiveHair/TS3AudioBot-NetEaseCloudmusic-plugin-UNM)项目
@@ -13,13 +13,14 @@ TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐�
 只测试过在Docker环境下能正常使用，理论Windows和Linux同样支持，推荐使用docker。
 
 ## 功能介绍
-- 支持QQ音乐和网易云音乐扫码登录
+- 支持QQ音乐和网易云音乐扫码登录，QQ扫码需要部署
 - 指令点歌，使用`!bgm play xxx`指令播放，使用`!qq play xxx`可以播放QQ音乐里的歌曲，同时支持输入ID和歌名查询（建议输入ID）。
-- 支持播放模式切换，使用`!bgm mode xxx`来切换，支持[0=顺序播放 1=单曲循环 2=顺序循环 3=随机播放]。
+- 支持播放模式切换，使用`!bgm mode xxx`来切换，支持[1=顺序播放 2=单曲循环 3=顺序循环 4=随机播放 5=顺序销毁 6=随机销毁]（销毁：播放完删除此歌曲）。
 - 支持网易云FM模式，使用`!wyy fm`进入fm播放模式，进入后使用`!bgm next`进入下一首歌
 - 内置歌曲列表，使用`!bgm ls`查看当前的播放歌曲列表，使用`!bgm go xxx`跳转歌曲，使用`!bgm rm xxx`来删除歌曲，使用`!bgm clear`来清除列表。
-- 支持歌词功能，使用`!bgm lyric`开启，默认关闭，歌词会显示在机器人的简介。
-- 频道无人超出30s自动停止播放。
+- 支持歌词功能，使用`!bgm lyric`开启，默认开启，歌词会显示在机器人的简介。
+- 支持调整播放进度，使用`!bgm seek [时间]`来修改进度。
+- 频道无人30s自动停止播放。
 
 ## 基本使用方法
 您需要部署TS3AudioBot，网易云API，QQ音乐API。
@@ -63,34 +64,42 @@ cookies = ""
 3.修改音量
 [COLOR=#0000ff]!volume [0-100的音量][/COLOR]
 4.下一首
-[COLOR=#0000ff]!bgm next[/COLOR]
+[COLOR=#0000ff]!bgm next/!next[/COLOR]
 5.上一首
 [COLOR=#0000ff]!bgm pre[/COLOR]
-6.改变播放模式[0=顺序播放 1=单曲循环 2=顺序循环 3=随机循环]
+6.修改播放进度
+[COLOR=#0000ff]!bgm seek [进度(s)][/COLOR]
+7.改变播放模式
+[1=顺序播放 2=单曲循环 3=顺序循环 4=随机播放]
+[5=顺序销毁 6=随机销毁](播完即删除)
 [COLOR=#0000ff]!bgm mode [模式号][/COLOR]
-7.列出歌曲列表(默认第一页)
+8.列出歌曲列表
 [COLOR=#0000ff]!bgm ls[/COLOR]
-8.跳转到歌单中的歌曲
+9.跳转到歌单中的歌曲
 [COLOR=#0000ff]!bgm go [音乐索引][/COLOR]
-9.从列表移除歌曲
+10.从列表移除歌曲
 [COLOR=#0000ff]!bgm rm [音乐索引][/COLOR]
-10.列出歌曲列表第N页
+11.移动歌曲
+[COLOR=#0000ff]!bgm mv [需要移动的音乐] [目标位置][/COLOR]
+12.列出歌曲列表第N页
 [COLOR=#0000ff]!bgm ls p [第N页][/COLOR]
-11.清空歌曲列表
+13.清空歌曲列表
 [COLOR=#0000ff]!bgm clear[/COLOR]
-12.启用歌词功能
+14.启用歌词功能
 [COLOR=#0000ff]!bgm lyric[/COLOR]
 -------------------------------------------
 网易云：
 1.登录网易云账号(输入后通过机器人头像扫码登录)
 [COLOR=#ff0000]!wyy login[/COLOR]
-2.立即播放网易云音乐(只播放这首)
+2.立即播放网易云音乐
 [COLOR=#ff0000]!wyy play [音乐id或者名称][/COLOR]
 3.添加音乐到下一首
+[COLOR=#ff0000]!wyy insert [音乐id或者名称][/COLOR]
+4.添加音乐到列表末尾
 [COLOR=#ff0000]!wyy add [音乐id或者名称][/COLOR]
-4.播放网易云音乐歌单
+5.播放网易云音乐歌单
 [COLOR=#ff0000]!wyy gd [歌单id或者名称][/COLOR]
-5.进入网易云FM模式(在FM模式中，下一首则为next)
+6.进入网易云FM模式(在FM模式中，下一首则为next)
 [COLOR=#ff0000]!wyy fm[/COLOR]
 -------------------------------------------
 QQ音乐
@@ -98,22 +107,26 @@ QQ音乐
 [COLOR=#0eb050]!qq login[/COLOR]
 2.使用cookie登录qq账号(使用cookie登录)
 [COLOR=#0eb050]!qq cookie [填入cookie][/COLOR]
-3.立即播放QQ音乐(QQ音乐id是带字母的)
+3.立即播放QQ音乐
 [COLOR=#0eb050]!qq play [音乐id或者名称][/COLOR]
 4.添加音乐到下一首
+[COLOR=#0eb050]!qq insert [音乐id或者名称][/COLOR]
+5.添加音乐到下一首
 [COLOR=#0eb050]!qq add [音乐id或者名称][/COLOR]
-5.播放QQ音乐歌单
+6.播放QQ音乐歌单
 [COLOR=#0eb050]!qq gd [歌单id或者名称][/COLOR]
-6.加载本地的QQ的cookie
+7.加载本地的QQ的cookie
 [COLOR=#0eb050]!qq load[/COLOR]
 需要注意的是如果歌单歌曲过多需要时间加载
 以下例子加粗的就是音乐或者歌单id
-网易云歌：https://music.163.com/#/song?id=[B]254548[/B]
-网易云歌单：https://music.163.com/#/playlist?id=[B]545016340[/B]
-QQ歌：https://y.qq.com/n/ryqq/songDetail/[B]004Z8Ihr0JIu5s[/B]
-QQ歌单：https://y.qq.com/n/ryqq/playlist/[B]3805603854[/B]
+网易云歌: https://music.163.com/#/song?id=[B]254548[/B]
+网易云歌单: https://music.163.com/#/playlist?id=[B]545016340[/B]
+QQ歌: https://y.qq.com/n/ryqq/songDetail/[B]004Z8Ihr0JIu5s[/B]
+支持数字id或者: https://y.qq.com/n/ryqq/songDetail/[B]102065756[/B]?songtype=0
+QQ歌单: https://y.qq.com/n/ryqq/playlist/[B]3805603854[/B]
 ```
-
+## 已知问题
+1. QQ音乐有的QQ音乐无法播放，具体报错：URL无法播放-http/isure.stream.qqmusic.qq.com/xxxxxxxxxxxxxxxxx.m4a?guid=xxxxxxxxxxxxxx&vkey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&uin=xxxxxxx&fromtag=xxxxx。已经尝试修复，若出现建议重启QQ音乐API。
 ## 使用docker从零部署音乐机器人
 使用三个docker实现部署机器人
 - [TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)
@@ -170,16 +183,17 @@ docker run --rm --mount type=bind,source="/home/ray/ts3bot/data",target=/app/dat
         "cmd.wyy.fm",
         # qq
         "cmd.qq.login",
+        "cmd.qq.cookie",
         "cmd.qq.play",
         "cmd.qq.add",
         "cmd.qq.gd",
         "cmd.qq.load",
         # Play controls
         "cmd.pause",
-		"cmd.stop",
-		"cmd.seek",
-		"cmd.volume"
-	]
+        "cmd.stop",
+        "cmd.seek",
+        "cmd.volume"
+   ]
 ```
 5. 创建默认bot，这里是创建机器人的**关键步骤**，由于docker部署原因，不会自动创建bot，所以在bots文件夹里创建default文件夹，在default文件夹内创建bot.toml，填入自己的服务器，以及密码，频道密码，以及修改机器人名字。该部分教程来自于[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)项目的[issues1](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker/issues/1)，在这部分没有经过测试。以下的中文是需要修改的地方。ps:<teamspeak 3 identity>部分我不清楚如何修改，可能可以通过Windows版本的ts3audiobot手动创建一个机器人，然后把其中的identity复制过来，似乎offset也需要修改，或者直接从其他部署方式得到的bot.toml继承下来。
 ```toml
@@ -255,9 +269,9 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 ### 3.部署QQ音乐API
 原项目：https://github.com/jsososo/QQMusicApi
 分支项目：https://github.com/yunxiangjun/QQMusicApi/tree/master
-为了支持扫码登录和cookie保存，请部署分支项目，然后修改/routes/user.js文件，这里我自己修改了一下原项目的代码，重新打包了一个docker文件，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下。
-部署QQ音乐API由于没有官方的Docker镜像，所以这里我自己打包了一个上传在另外一个项目[QQmusicAPI_docker_Image](https://github.com/RayQuantum/QQmusicAPI_docker_Image)，文件较大，具体部署步骤可以查看该项目内。
-下载链接：https://github.com/RayQuantum/QQmusicAPI_docker_Image/releases/download/v1.1.0/qqmusic_qr_image.tar
+为了支持扫码登录和cookie保存，这里我自己修改了一下分支项目的代码，重新打包了一个docker文件，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下。
+部署QQ音乐API由于没有官方的Docker镜像，所以这里我自己打包了一个上传在另外一个项目[QQMusicApi_QR](https://github.com/RayQuantum/QQMusicApi_QR)，文件较大，具体部署和原版一致。
+下载链接：https://github.com/RayQuantum/QQMusicApi_QR/releases/download/v1.0.0/qqmusic_qr_image.tar
 1. 下载后，执行`docker load qqmusic_qr_image.tar`
 2. 部署容器
 ```
