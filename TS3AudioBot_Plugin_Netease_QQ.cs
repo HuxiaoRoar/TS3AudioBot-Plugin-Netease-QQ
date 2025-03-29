@@ -208,12 +208,10 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                             lyric_id_now = string_id;
                             await GetLyricNow();
                         }
-                        Console.WriteLine("get lyric:" + string_id);
                         // 开始刷新歌词
                         string lyric_now = "";
                         TimeSpan now = (TimeSpan)player.Position;
                         TimeSpan length = (TimeSpan)player.Length;
-                        Console.WriteLine("get timespan:" + now + "length:" + length);
                         for (int i = 0; i < Lyric.Count; i++)
                         {
                             if (now > Lyric[i].First().Key)
@@ -229,12 +227,10 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                                 break;
                             }
                         }
-                        Console.WriteLine("find lyric:" + lyric_now);
                         if (lyric_now != lyric_before)
                         {
                             await ts3c.ChangeDescription(lyric_now);
                         }
-                        Console.WriteLine("change lyric:" + lyric_now);
                         lyric_before = lyric_now;
                     });
                 }
