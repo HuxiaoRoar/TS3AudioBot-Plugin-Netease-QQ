@@ -4,8 +4,8 @@
 网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/
 基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi
 QQ音乐API文档 https://qq-api-soso.vercel.app/#/
-参考了[ZHANGTIANYAO1](https://github.com/ZHANGTIANYAO1)的[TS3AudioBot-NetEaseCloudmusic-plugin](https://github.com/ZHANGTIANYAO1/TS3AudioBot-NetEaseCloudmusic-plugin)项目
-参考了[FiveHair](https://github.com/FiveHair)的[TS3AudioBot-NetEaseCloudmusic-plugin-UNM](https://github.com/FiveHair/TS3AudioBot-NetEaseCloudmusic-plugin-UNM)项目
+参考了[ZHANGTIANYAO1](https://github.com/ZHANGTIANYAO1)的TS3AudioBot-NetEaseCloudmusic-plugin https://github.com/ZHANGTIANYAO1/TS3AudioBot-NetEaseCloudmusic-plugin
+参考了[FiveHair](https://github.com/FiveHair)的TS3AudioBot-NetEaseCloudmusic-plugin-UNM https://github.com/FiveHair/TS3AudioBot-NetEaseCloudmusic-plugin-UNM
 
 TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐和网易云音乐。
 需要自行部署1. TS3AudioBot  2.网易云API 3.QQ音乐API （API也可只部署其中一个）
