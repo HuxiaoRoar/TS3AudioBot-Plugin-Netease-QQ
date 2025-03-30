@@ -1,10 +1,9 @@
 # TS3AudioBot-Plugin-Netease-QQ
 >基于Splamy/TS3AudioBot项目 https://github.com/Splamy/TS3AudioBot
 >基于网易云音乐API项目 https://github.com/Binaryify/neteasecloudmusicapi
->网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/
->基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi
->QQ音乐API文档 https://qq-api-soso.vercel.app/#/
-
+网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/
+基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi
+QQ音乐API文档 https://qq-api-soso.vercel.app/#/
 参考了[ZHANGTIANYAO1](https://github.com/ZHANGTIANYAO1)的[TS3AudioBot-NetEaseCloudmusic-plugin](https://github.com/ZHANGTIANYAO1/TS3AudioBot-NetEaseCloudmusic-plugin)项目
 参考了[FiveHair](https://github.com/FiveHair)的[TS3AudioBot-NetEaseCloudmusic-plugin-UNM](https://github.com/FiveHair/TS3AudioBot-NetEaseCloudmusic-plugin-UNM)项目
 
