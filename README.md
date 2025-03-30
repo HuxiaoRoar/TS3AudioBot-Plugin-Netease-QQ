@@ -1,9 +1,9 @@
 # TS3AudioBot-Plugin-Netease-QQ
->基于Splamy/TS3AudioBot项目 https://github.com/Splamy/TS3AudioBot
->基于网易云音乐API项目 https://github.com/Binaryify/neteasecloudmusicapi
->网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/
->基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi
->QQ音乐API文档 https://qq-api-soso.vercel.app/#/
+>基于Splamy/TS3AudioBot项目 https://github.com/Splamy/TS3AudioBot 
+>基于网易云音乐API项目 https://github.com/Binaryify/neteasecloudmusicapi 
+>网易云音乐API文档 https://binaryify.github.io/NeteaseCloudMusicApi/#/ 
+>基于QQ音乐API项目 https://github.com/jsososo/QQMusicApi 
+>QQ音乐API文档 https://qq-api-soso.vercel.app/#/ 
 
 参考了[ZHANGTIANYAO1](https://github.com/ZHANGTIANYAO1)的[TS3AudioBot-NetEaseCloudmusic-plugin](https://github.com/ZHANGTIANYAO1/TS3AudioBot-NetEaseCloudmusic-plugin)项目
 参考了[FiveHair](https://github.com/FiveHair)的[TS3AudioBot-NetEaseCloudmusic-plugin-UNM](https://github.com/FiveHair/TS3AudioBot-NetEaseCloudmusic-plugin-UNM)项目
@@ -131,7 +131,7 @@ QQ歌单: https://y.qq.com/n/ryqq/playlist/[B]3805603854[/B]
 使用三个docker实现部署机器人
 - [TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)
 - [网易云API Docker安装](https://binaryify.github.io/NeteaseCloudMusicApi/#/?id=docker-%e5%ae%b9%e5%99%a8%e8%bf%90%e8%a1%8c)
-- [QQmusicAPI_dockerImage](https://github.com/RayQuantum/QQmusicAPI_docker_Image)
+- [QQMusicApi_QR](https://github.com/RayQuantum/QQMusicApi_QR)
 
 ### 1. 使用docker部署TS3AudioBot
 原始项目来源[TS3AudioBot](https://github.com/Splamy/TS3AudioBot)，推荐使用docker版部署[TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)，这里把安装教程翻译了一下。推荐先拉取镜像`ancieque/ts3audiobot:0.12.0`。
@@ -273,9 +273,8 @@ docker run -d -p 3000:3000 --name netease_cloud_music_api binaryify/netease_clou
 ### 3.部署QQ音乐API
 原项目：https://github.com/jsososo/QQMusicApi
 分支项目：https://github.com/yunxiangjun/QQMusicApi/tree/master
-为了支持扫码登录和cookie保存，这里我自己修改了一下分支项目的代码，重新打包了一个docker文件，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下。
-部署QQ音乐API由于没有官方的Docker镜像，所以这里我自己打包了一个上传在另外一个项目[QQMusicApi_QR](https://github.com/RayQuantum/QQMusicApi_QR)，文件较大，具体部署和原版一致。
-下载链接：https://github.com/RayQuantum/QQMusicApi_QR/releases/download/v1.0.0/qqmusic_qr_image.tar
+为了支持扫码登录和cookie保存，这里我自己修改了一下分支项目的代码，之后的插件都需要使用我修改过的QQ音乐API才能正常使用。具体部署项目如下，[QQMusicApi_QR](https://github.com/RayQuantum/QQMusicApi_QR)，具体部署方法和原版一致。
+或者使用docker部署，下载链接：https://github.com/RayQuantum/QQMusicApi_QR/releases/download/v1.0.0/qqmusic_qr_image.tar
 1. 下载后，执行`docker load qqmusic_qr_image.tar`
 2. 部署容器
 ```
