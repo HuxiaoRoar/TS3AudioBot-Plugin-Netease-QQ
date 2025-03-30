@@ -8,9 +8,9 @@
 参考了[ZHANGTIANYAO1](https://github.com/ZHANGTIANYAO1)的[TS3AudioBot-NetEaseCloudmusic-plugin](https://github.com/ZHANGTIANYAO1/TS3AudioBot-NetEaseCloudmusic-plugin)项目   
 参考了[FiveHair](https://github.com/FiveHair)的[TS3AudioBot-NetEaseCloudmusic-plugin-UNM](https://github.com/FiveHair/TS3AudioBot-NetEaseCloudmusic-plugin-UNM)项目
 
-TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐和网易云音乐。
-需要自行部署1. TS3AudioBot  2.网易云API 3.QQ音乐API （API也可只部署其中一个）
-只测试过在Docker环境下能正常使用，理论Windows和Linux同样支持，推荐使用docker。
+TeamSpeak3音乐机器人插件，实现在语音频道中播放网络QQ音乐和网易云音乐。   
+需要自行部署1. TS3AudioBot  2.网易云API 3.QQ音乐API （API也可只部署其中一个）   
+只测试过在Docker环境下能正常使用，理论Windows和Linux同样支持，推荐使用docker。   
 
 ## 功能介绍
 - 支持QQ音乐和网易云音乐扫码登录，QQ扫码需要部署
