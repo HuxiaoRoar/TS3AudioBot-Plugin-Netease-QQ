@@ -127,6 +127,7 @@ QQ歌单: https://y.qq.com/n/ryqq/playlist/[B]3805603854[/B]
 ```
 ## 已知问题
 1. QQ音乐有的QQ音乐无法播放，具体报错：URL无法播放-http/isure.stream.qqmusic.qq.com/xxxxxxxxxxxxxxxxx.m4a?guid=xxxxxxxxxxxxxx&vkey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&uin=xxxxxxx&fromtag=xxxxx。已经尝试修复，若出现建议重启QQ音乐API。
+2. 使用！bgm next会连续跳两次，解决方法：使用！next
 ## 使用docker从零部署音乐机器人
 使用三个docker实现部署机器人
 - [TS3AudioBot_docker](https://github.com/getdrunkonmovies-com/TS3AudioBot_docker)
