@@ -1,0 +1,84 @@
+# 工作流的名称
+name: .NET Build and Auto Release
+
+# 工作流的触发条件
+on:
+  # 当有以 'v' 开头的标签被推送到仓库时触发 (例如 v1.0, v2.0.0)
+  push:
+    tags:
+      - 'v*'
+  
+  # 允许你在 GitHub Actions 页面手动触发此工作流，方便测试
+  workflow_dispatch:
+
+jobs:
+  # 定义一个名为 "build-and-release" 的任务
+  build-and-release:
+    # 指定任务运行的操作系统环境
+    runs-on: ubuntu-latest
+    permissions:      
+      contents: write   
+    # 任务的步骤
+    steps:
+    # 第 1 步：检出（下载）你的仓库代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 第 2 步：安装并设置 .NET Core 3.1 SDK
+    - name: Setup .NET Core SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '3.1.x'
+
+    # 第 3 步：还原项目的 NuGet 包依赖
+    - name: Restore dependencies
+      run: dotnet restore TS3AudioBot-Plugin-Netease-QQ.sln
+
+    # 第 4 步：构建项目，使用 Release 配置
+    - name: Build project
+      run: dotnet build TS3AudioBot-Plugin-Netease-QQ.sln --configuration Release --no-restore
+
+    # 第 5 步：运行测试（如果你的项目中有测试项目，它会自动执行）
+    - name: Run tests
+      run: dotnet test TS3AudioBot-Plugin-Netease-QQ.sln --no-build --verbosity normal
+
+    # --- 打包阶段 ---
+
+    # 第 6 步：创建用于打包的临时目录
+    - name: Create release package directory
+      run: mkdir release_package
+
+    # 第 7 步：将核心 DLL 文件复制到打包目录
+    - name: Copy DLL to package directory
+      run: cp bin/Release/netcoreapp3.1/TS3AudioBot-Plugin-Netease-QQ.dll release_package/
+
+    # 第 8 步：将文档文件复制到打包目录 (如果文件存在)
+    - name: Copy documentation to package directory
+      run: |
+        cp README.md release_package/ || true
+        cp LICENSE release_package/ || true
+        
+    # 第 9 步：从 Git 标签中提取版本号
+    - name: Get version from tag
+      id: get_version
+      # 这行命令会去除 'refs/tags/' 前缀，例如 'refs/tags/v2.0.0' -> 'v2.0.0'
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+    # 第 10 步：将打包目录压缩成 zip 文件
+    - name: Create zip archive
+      run: zip -r TS3AudioBot-Plugin-Netease-QQ-${{ env.VERSION }}.zip release_package/
+      
+    # --- 发布阶段 ---
+
+    # 第 11 步：创建 GitHub Release 并上传 zip 压缩包
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        # Release 的标题
+        name: Release ${{ env.VERSION }}
+        # 将草稿状态设置为 false，直接发布
+        draft: false
+        # 将预发布状态设置为 false
+        prerelease: false
+        # 附加的文件，即我们刚刚创建的 zip 压缩包
+        files: bilibili-Plugin-${{ env.VERSION }}.zip
