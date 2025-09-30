@@ -1,10 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>TS3AudioBot_Plugin_Netease_QQ</RootNamespace>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<Version>1.4</Version>
+		<RootNamespace>TS3AudioBot_Plugin_Netease_QQ</RootNamespace>
+	</PropertyGroup>
 
+	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+		<AssemblyVersion>1.4.*</AssemblyVersion>
+		<Deterministic>false</Deterministic>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+		<AssemblyVersion>$(Version).1</AssemblyVersion>
+		<Deterministic>true</Deterministic>
+	</PropertyGroup>
+	
   <ItemGroup>
     <None Remove="lib\TS3AudioBot.dll" />
     <None Remove="lib\TSLib.dll" />
