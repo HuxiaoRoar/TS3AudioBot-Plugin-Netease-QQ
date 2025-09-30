@@ -168,8 +168,18 @@ namespace TS3AudioBot_Plugin_Netease_QQ
 
             // 启动歌词线程
             StartLyric(true);
+
+            // 获取当前正在运行的程序集
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+
+            // 将版本号格式化成 "主版本.次版本.生成号" 的形式，忽略最后的修订号
+            string displayVersion = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+
+            // 启动歌词线程
+            StartLyric(true);
             // 欢迎词
-            await ts3Client.SendChannelMessage("TS3AudioBot-Plugin-Netease-QQ插件加载完毕");
+            await ts3Client.SendChannelMessage($"网易、QQ插件加载完毕！当前版本：v{displayVersion}");
+
         }
         //--------------------------歌词线程--------------------------
         private void StartLyric(bool enable)
@@ -607,6 +617,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 // 修改机器人描述
                 string songname = "名称获取失败", authorname = "", picurl = "";
                 string modename = "";
+                
                 string newname;
                 if (detail != null)
                 {
@@ -669,8 +680,9 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                     {
                         modename = "[FM]";
                     }
-                    newname = $"{botname_connect} {modename} {songname}-{authorname}";
-                    if (newname.Length >= 21)
+                    string comefrom = music_type == 0 ? "网易云" : music_type == 1 ? "Q音" : "未知";
+                    newname = $"{comefrom}：{songname}-{authorname}{modename}";
+                    if (newname.Length >= 30)
                     {// 确保名字21以下
                         newname = newname.Substring(0, 21) + "...";
                     }
