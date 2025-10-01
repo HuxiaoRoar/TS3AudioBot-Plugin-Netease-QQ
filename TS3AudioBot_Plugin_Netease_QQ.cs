@@ -871,6 +871,8 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 }
             }
         }
+        
+        
         //--------------------------指令段--------------------------
         [Command("test")]
         public async Task CommandTest(PlayManager playManager, Player player, Ts3Client ts3Client, ConfBot confbot)
@@ -897,12 +899,12 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             string res = await musicapi.GetmidFromId("375869866");
             Console.WriteLine(res);
         }
-        [Command("bgm play")]
+        [Command("wq play")]
         public async Task CommandMusicPlay(string argments, Ts3Client ts3Client)
         {
             await CommandWyyPlay(argments, ts3Client);
         }
-        [Command("bgm seek")]
+        [Command("wq seek")]
         public async Task CommandSeek(string argments)
         {
             long value = 0;
@@ -924,19 +926,19 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 }
             }
         }
-        [Command("bgm next")]
+        [Command("wq next")]
         public async Task CommandNext(Ts3Client ts3Client)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
             await PlayListNext();
         }
-        [Command("bgm pre")]
+        [Command("wq pre")]
         public async Task CommandPre(Ts3Client ts3Client)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
             await PlayListPre();
         }
-        [Command("bgm mode")]
+        [Command("wq mode")]
         public async Task CommandMode(int argments, Ts3Client ts3Client)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
@@ -968,33 +970,62 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 await ts3Client.SendChannelMessage("输入参数错误");
             }
         }
-        [Command("bgm ls")]
+        [Command("wq ls")]
         public async Task CommandLs()
         {
             await PlayListShow(play_index / 10 + 1);
         }
-        [Command("bgm ls p")]
+        [Command("wq ls p")]
         public async Task CommandLsPage(int page, InvokerData invokerData)
         {
             // 展示第page页
             await PlayListShow(page);
         }
-        [Command("bgm go")]
-        public async Task CommandGo(int argments, Ts3Client ts3Client)
+        [Command("wq go")]
+       
+        public async Task CommandGo(Ts3Client ts3Client, int? argments = null)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
-            // 音乐跳转
-            if (0 < argments && argments <= PlayList.Count)
+
+            // --- 情况1: 用户输入了 "!bgm go [编号]" (跳转) ---
+            if (argments.HasValue)
             {
-                play_index = argments - 1;
-                await PlayListPlayNow();
+                int targetIndex = argments.Value;
+                if (0 < targetIndex && targetIndex <= PlayList.Count)
+                {
+                    play_index = targetIndex - 1;
+                    await ts3Client.SendChannelMessage($"已跳转到网易/QQ列表第{targetIndex}首歌。");
+                    await PlayListPlayNow();
+                }
+                else
+                {
+                    await ts3Client.SendChannelMessage($"超出索引范围, 范围[1,{PlayList.Count}]");
+                }
             }
+            // --- 情况2: 用户只输入了 "!bgm go" (重播或播放) ---
             else
             {
-                await ts3Client.SendChannelMessage($"超出索引范围, 范围[1,{PlayList.Count}]");
+                // a) 如果有歌曲正在播放，则重播当前歌曲
+                if (playManager.IsPlaying)
+                {
+                    await ts3Client.SendChannelMessage($"已跳转到网易/QQ列表第{play_index+1}首歌。");
+                    await PlayListPlayNow();
+                }
+                // b) 如果当前没有歌曲播放，但播放列表不为空
+                else if (PlayList.Count > 0)
+                {
+                    await ts3Client.SendChannelMessage("开始播放网易/QQ列表。");
+                    play_index = 0; // 从第一首开始
+                    await PlayListPlayNow();
+                }
+                // c) 如果播放列表是空的
+                else
+                {
+                    await ts3Client.SendChannelMessage("播放列表是空的，没有可以播放的歌曲。");
+                }
             }
         }
-        [Command("bgm mv")]
+        [Command("wq move")]
         public async Task CommandMv(int idx, int target, Ts3Client ts3Client)
         {// idx为要移动的歌曲, target为目标, 范围是[1,PlayList.Count], 若target为
             if (idx < 1 || idx > PlayList.Count)
@@ -1048,7 +1079,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             await ts3Client.SendChannelMessage($"已将歌曲从位置 {idx} 移动到位置 {target}, 当前播放位置：{play_index + 1}");
             await PlayListShow((target - 1) / 10 + 1);
         }
-        [Command("bgm rm")]
+        [Command("wq remove")]
         public async Task CommandRm(int argments, Ts3Client ts3Client, Player player)
         {
             if (isObstruct) { await ts3Client.SendChannelMessage("正在进行处理，请稍后"); return; }
@@ -1097,7 +1128,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
                 await ts3Client.SendChannelMessage($"超出索引范围, 范围[1,{PlayList.Count}]");
             }
         }
-        [Command("bgm clear")]
+        [Command("wq clear")]
         public async Task CommandClearList(Ts3Client ts3Client, Player player)
         {
             PlayList.Clear();
@@ -1122,7 +1153,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             await ts3Client.DeleteAvatar();
         }
         //--------------------------歌词指令段--------------------------
-        [Command("bgm lyric")]
+        [Command("wq lyric")]
         public async Task CommandLyric(Ts3Client ts3Client)
         {
             // 通过用户的指令来创建歌词线程
@@ -1312,7 +1343,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             else
             {
                 await CommandWyyInsert(argments, ts3Client);
-                await CommandGo(play_index + 2, ts3Client);
+                await CommandGo(ts3Client, play_index + 2);
             }
         }
         [Command("wyy insert")]
@@ -1667,7 +1698,7 @@ namespace TS3AudioBot_Plugin_Netease_QQ
             else
             {
                 await CommandQQInsert(argments, ts3Client);
-                await CommandGo(play_index + 2, ts3Client);
+                await CommandGo(ts3Client, play_index + 2);
             }
         }
         [Command("qq insert")]
