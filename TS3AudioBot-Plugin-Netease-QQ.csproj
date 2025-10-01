@@ -1,11 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">   
 
 	<PropertyGroup>
 		<TargetFramework>netcoreapp3.1</TargetFramework>
 		<Version>1.4</Version>
 		<RootNamespace>TS3AudioBot_Plugin_Netease_QQ</RootNamespace>
-	</PropertyGroup>
-
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+</PropertyGroup>
+	
 	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
 		<AssemblyVersion>1.4.*</AssemblyVersion>
 		<Deterministic>false</Deterministic>
@@ -32,6 +33,8 @@
       <IncludeAssets>all</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.11" />
+
   </ItemGroup>
 
   <ItemGroup>
